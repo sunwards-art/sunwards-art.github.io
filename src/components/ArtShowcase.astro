@@ -1,0 +1,636 @@
+---
+import { spreads } from "../data/art";
+
+const shadowClass = {
+  dark: "brutal-card-dark",
+  accent: "brutal-card-accent",
+  ochre: "brutal-card-ochre",
+};
+
+const ribbonText = "ORIGINAL ILLUSTRATIONS × SELECTED PLATES × ARCHIVE 2026 × ";
+
+// Staggered columns of alternating eye (visibility) & sun (wb_sunny) icons with organic offsets
+const colStartOffsets = [190, 25, 330, 105, 255, 10, 380, 140, 290, 60, 220];
+const colSpeeds = [0.54, 0.72, 0.46, 0.66, 0.78, 0.58, 0.48, 0.70, 0.60, 0.75, 0.52];
+const iconColumns = colStartOffsets.map((startY, c) => {
+  const items = Array.from({ length: 22 }, (_, r) => {
+    const seed = (c * 37 + r * 53) % 97;
+    const seed2 = (c * 71 + r * 29) % 89;
+    const dx = Math.round(((seed / 97) - 0.5) * 64); // -32px .. +32px horizontal scatter
+    const dy = Math.round(((seed2 / 89) - 0.5) * 56); // -28px .. +28px vertical scatter
+    const size = 72 + ((c * 13 + r * 19) % 28); // 72px .. 99px (~3.5x larger than default 24px)
+    const isEye = (r + c) % 2 === 0;
+    return {
+      icon: isEye ? "visibility" : "wb_sunny",
+      dx,
+      dy,
+      size,
+    };
+  });
+  return { startY, speed: colSpeeds[c], items };
+});
+---
+<section id="art" class="bg-paper text-ink">
+  <!-- Brutalist Section Header -->
+  <header
+    data-parallax-root
+    class="relative border-b-2 border-ink bg-paper px-5 pb-8 pt-14 md:px-10 md:pb-12 md:pt-20"
+  >
+    <div class="mx-auto max-w-[1520px]">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-4 font-mono text-xs font-bold uppercase tracking-[0.2em]">
+        <span class="text-accent">01 // WORKS</span>
+        <span class="text-ink/70">CLICK ANY PLATE TO INSPECT</span>
+      </div>
+      <h2 class="font-display text-[length:clamp(3.1rem,10.5vw,10rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
+        Selected <span class="font-serif italic font-normal lowercase text-accent">works</span>
+      </h2>
+    </div>
+  </header>
+
+  {spreads.map((spread) => {
+    const isInk = spread.theme === "ink";
+    return (
+      <div
+        id={spread.id}
+        data-parallax-root
+        class:list={[
+          "relative overflow-x-clip px-5 py-10 md:px-10 md:py-16",
+          isInk ? "bg-ink text-paper" : "bg-paper text-ink",
+        ]}
+      >
+        <!-- Oversized background ghost word -->
+        <div
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-x-0 top-6 z-0 select-none text-center font-display text-[20vw] font-extrabold uppercase leading-none tracking-[-0.05em] opacity-[0.06]"
+        >
+          {spread.ghost}
+        </div>
+
+        <!-- Spread label rule -->
+        <div
+          class:list={[
+            "relative z-10 mx-auto mb-6 flex max-w-[1520px] items-baseline justify-between gap-4 border-b pb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] md:mb-8 md:text-xs",
+            isInk ? "border-paper/25" : "border-ink/25",
+          ]}
+        >
+          <span class={isInk ? "text-ochre" : "text-accent"}>{spread.number}</span>
+          <span>{spread.title}</span>
+        </div>
+
+        <!-- Colliding 12-column collage stage -->
+        <div class="relative mx-auto grid max-w-[1520px] grid-cols-12 items-start">
+          {spread.items.map((item) => (
+            <div class:list={["group relative transition-[z-index] duration-150 hover:z-40", item.gridClass, item.zClass]}>
+              <article
+                class="tilt-perspective"
+                data-parallax={item.parallax}
+                data-collide-x={item.collideX}
+                data-rotate={item.rotate}
+                data-scale={item.scale}
+              >
+                <div
+                  data-tilt-card
+                  class:list={[
+                    "tilt-card relative rounded-none border-2",
+                    isInk ? "border-paper/80 bg-ink" : "border-ink bg-paper",
+                    shadowClass[item.shadow],
+                  ]}
+                >
+                  <button
+                    type="button"
+                    class="relative block w-full cursor-zoom-in overflow-hidden rounded-none text-left"
+                    data-lightbox
+                    data-index={item.index}
+                    data-src={item.full}
+                    data-title={item.title}
+                    data-meta={`${item.year} · ${item.medium}`}
+                    data-alt={item.alt}
+                    aria-label={`Open ${item.title} full screen`}
+                  >
+                    <div class="relative w-full overflow-hidden rounded-none bg-ink/20" style={`aspect-ratio:${item.ratio}`}>
+                      <img
+                        src={item.src}
+                        srcset={item.srcSet}
+                        sizes={item.sizes}
+                        alt={item.alt}
+                        loading="lazy"
+                        decoding="async"
+                        class="h-full w-full object-cover"
+                      />
+                      <!-- Dynamic radial glare layer (Mark Miro wbqMPa effect, square corners) -->
+                      <div
+                        data-tilt-glow
+                        class="tilt-glow pointer-events-none absolute inset-0 z-10 rounded-none"
+                        aria-hidden="true"
+                      />
+                      <span
+                        class:list={[
+                          "absolute left-2.5 top-2.5 z-20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em]",
+                          isInk ? "bg-ochre text-ink" : "bg-ink text-paper",
+                        ]}
+                      >
+                        FIG. {item.fig}
+                      </span>
+                    </div>
+
+                    <div
+                      class:list={[
+                        "flex flex-wrap items-baseline justify-between gap-2 border-t-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] md:text-[11px]",
+                        isInk ? "border-paper/80 bg-ink text-paper" : "border-ink bg-ink text-paper",
+                      ]}
+                    >
+                      <span class="font-bold text-paper">{item.title}</span>
+                      <span class="text-paper/65">{item.year} · {item.medium}</span>
+                    </div>
+                  </button>
+                </div>
+              </article>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  })}
+
+  <!-- Scroll-locked centered frame animation after the last image -->
+  <div
+    id="eye-anim-runway"
+    class="relative h-[350svh] bg-ink text-paper"
+    data-strip-src="/art/gif/eye-strip.webp"
+    data-frames="34"
+  >
+    <div class="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden px-5 md:px-10">
+      <!-- Scrolling organic field of eye (visibility) and sun (wb_sunny) icons while eye animation plays -->
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none"
+      >
+        <div
+          id="eye-sun-pattern"
+          class="absolute left-1/2 top-0 flex -translate-x-1/2 items-start gap-8 md:gap-14"
+        >
+          {iconColumns.map((col) => (
+            <div
+              data-icon-col
+              data-speed={col.speed}
+              class="flex w-[140px] flex-col items-center will-change-transform md:w-[165px]"
+              style={`padding-top:${col.startY}px`}
+            >
+              {col.items.map((item) => (
+                <div class="flex h-[185px] w-full items-center justify-center">
+                  <span
+                    class="eye-sun-icon text-paper/20"
+                    style={`font-size:${item.size}px; transform:translate3d(${item.dx}px, ${item.dy}px, 0)`}
+                  >
+                    {item.icon}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- Subtle background ghost label -->
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-x-0 top-1/2 z-0 -translate-y-1/2 select-none text-center font-display text-[19vw] font-extrabold uppercase leading-none tracking-[-0.05em] text-paper opacity-[0.04]"
+      >
+        BLINK
+      </div>
+
+      <div class="relative z-20 w-full max-w-[440px] md:max-w-[480px]">
+        <article>
+          <div class="brutal-card-accent relative rounded-none border-2 border-paper/80 bg-ink">
+            <button
+              type="button"
+              class="relative block w-full cursor-zoom-in overflow-hidden rounded-none text-left"
+              data-lightbox
+              data-index="8"
+              data-src="/art/gif/eye-loop.webp"
+              data-title="Blink Study"
+              data-meta="2026 · 34-Frame Hand-Painted Loop"
+              data-alt="Hand-painted animated eye study scrubbed by scroll wheel"
+              aria-label="Open Blink Study animation full screen"
+            >
+              <div class="relative aspect-square w-full overflow-hidden rounded-none bg-ink/40">
+                <canvas
+                  id="eye-anim-canvas"
+                  width="480"
+                  height="480"
+                  class="block h-full w-full object-cover"
+                ></canvas>
+
+                <span class="absolute left-2.5 top-2.5 z-20 bg-ochre px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ink">
+                  FIG. 09 // LOOP
+                </span>
+
+                <span
+                  id="eye-anim-status"
+                  class="
+                    absolute right-2.5 top-2.5 z-20 border border-paper/30 bg-ink/85 px-2 py-0.5
+                    font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-paper/90
+                  "
+                >
+                  01 / 34 · SCROLL
+                </span>
+
+                <!-- Thin bottom progress bar for the locked playthrough -->
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-1 bg-ink/60">
+                  <div
+                    id="eye-anim-bar"
+                    class="h-full w-full origin-left scale-x-0 bg-accent transition-none"
+                  ></div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-baseline justify-between gap-2 border-t-2 border-paper/80 bg-ink px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-paper md:text-[11px]">
+                <span class="font-bold text-paper">Blink Study</span>
+                <span class="text-paper/65">2026 · Wheel-Driven Sequence</span>
+              </div>
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kinetic ochre divider ribbon into Projects -->
+  <div class="overflow-hidden border-y-2 border-paper/30 bg-ochre py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-ink">
+    <div class="marquee-track whitespace-nowrap">
+      <span>{ribbonText.repeat(6)}</span>
+      <span aria-hidden="true">{ribbonText.repeat(6)}</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tilt-perspective {
+    perspective: 1500px;
+  }
+  .tilt-card {
+    border-radius: 0;
+    scale: 1;
+    transform: rotate3d(0, 0, 0, 0deg);
+    transition-duration: 180ms;
+    transition-property: transform, scale, box-shadow;
+    transition-timing-function: ease-out;
+  }
+  .tilt-card.is-visible {
+    will-change: transform;
+  }
+  .tilt-card:hover {
+    scale: 1.05;
+  }
+  .tilt-glow {
+    border-radius: 0;
+  }
+  .eye-sun-icon {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 48;
+  }
+</style>
+
+<script>
+  /**
+   * Global 3D Card Tilt + Radial Glow (adapted from https://codepen.io/markmiro/pen/wbqMPa)
+   * Inverted tilt axis; all on-screen cards react simultaneously to cursor movement anywhere on screen.
+   * Optimized with two-phase read/write separation and cached bounding rects so mousemove performs zero layout reads.
+   */
+  const canHover = matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (canHover && !reduced) {
+    const cardEls = Array.from(document.querySelectorAll<HTMLElement>("[data-tilt-card]"));
+    const cards = cardEls.map((card) => {
+      const item = {
+        card,
+        anchor: card.parentElement ?? card,
+        glow: card.querySelector<HTMLElement>("[data-tilt-glow]"),
+        hovered: false,
+        rect: { x: 0, y: 0, width: 1, height: 1 },
+      };
+      card.addEventListener(
+        "mouseenter",
+        () => {
+          item.hovered = true;
+          scheduleUpdate(false);
+        },
+        { passive: true }
+      );
+      card.addEventListener(
+        "mouseleave",
+        () => {
+          item.hovered = false;
+          if (item.glow) {
+            item.glow.style.backgroundImage = "";
+          }
+        },
+        { passive: true }
+      );
+      return item;
+    });
+
+    const visibleCards = new Set<(typeof cards)[number]>();
+    const cardMap = new Map(cards.map((item) => [item.card, item]));
+    let boundsDirty = true;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const item = cardMap.get(entry.target as HTMLElement);
+          if (!item) continue;
+          if (entry.isIntersecting) {
+            item.card.classList.add("is-visible");
+            const b = entry.boundingClientRect;
+            item.rect = { x: b.x, y: b.y, width: b.width, height: b.height };
+            visibleCards.add(item);
+          } else {
+            item.card.classList.remove("is-visible");
+            visibleCards.delete(item);
+          }
+        }
+      },
+      { rootMargin: "150px" }
+    );
+
+    cards.forEach(({ card }) => io.observe(card));
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let hasPointer = false;
+    let rafId = 0;
+
+    function updateCards() {
+      rafId = 0;
+      if (!hasPointer || visibleCards.size === 0) return;
+
+      // Phase 1 (Read-only): refresh cached bounding boxes only after scroll/resize, before any DOM style writes
+      if (boundsDirty) {
+        boundsDirty = false;
+        for (const item of visibleCards) {
+          const b = item.anchor.getBoundingClientRect();
+          item.rect.x = b.x;
+          item.rect.y = b.y;
+          item.rect.width = b.width;
+          item.rect.height = b.height;
+        }
+      }
+
+      // Phase 2 (Write-only): mutate style.transform & radial glow with zero layout queries
+      for (const { card, glow, hovered, rect } of visibleCards) {
+        const leftX = mouseX - rect.x;
+        const topY = mouseY - rect.y;
+        const centerX = leftX - rect.width * 0.5;
+        const centerY = topY - rect.height * 0.5;
+        const distance = Math.hypot(centerX, centerY);
+
+        // Inverted rotation axis (-centerY, centerX) active globally
+        card.style.transform = `rotate3d(${(-centerY / 100).toFixed(3)}, ${(centerX / 100).toFixed(3)}, 0, ${(Math.log(Math.max(1, distance)) * 2).toFixed(2)}deg)`;
+
+        // Non-inverted radial shine active only when hovering directly over the card
+        if (glow) {
+          if (hovered) {
+            glow.style.backgroundImage = `radial-gradient(circle at ${(centerX * 2 + rect.width * 0.5).toFixed(1)}px ${(centerY * 2 + rect.height * 0.5).toFixed(1)}px, #ffffff55, #0000000f)`;
+          } else if (glow.style.backgroundImage) {
+            glow.style.backgroundImage = "";
+          }
+        }
+      }
+    }
+
+    function scheduleUpdate(markBoundsDirty: boolean) {
+      if (markBoundsDirty) boundsDirty = true;
+      if (!rafId) {
+        rafId = requestAnimationFrame(updateCards);
+      }
+    }
+
+    window.addEventListener(
+      "mousemove",
+      (e: MouseEvent) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        hasPointer = true;
+        scheduleUpdate(false);
+      },
+      { passive: true }
+    );
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (hasPointer && visibleCards.size > 0) scheduleUpdate(true);
+        else boundsDirty = true;
+      },
+      { passive: true }
+    );
+
+    window.addEventListener(
+      "resize",
+      () => {
+        boundsDirty = true;
+      },
+      { passive: true }
+    );
+
+    document.addEventListener(
+      "mouseleave",
+      () => {
+        hasPointer = false;
+        for (const { card, glow } of cards) {
+          card.style.transform = "";
+          if (glow) {
+            glow.style.backgroundImage = "";
+          }
+        }
+      },
+      { passive: true }
+    );
+  }
+
+  /**
+   * Scroll-Locked & Wheel-Driven 34-Frame Eye Animation
+   * - Locks centered on screen while scrolling through #eye-anim-runway for 1 full playthrough (0 -> 33)
+   * - Unlocks once played and keeps cycling frames with the mouse wheel as you keep scrolling down
+   * - Lazy-loads eye-strip.webp ahead of viewport arrival and caches runway offsets to avoid layout queries on scroll
+   */
+  const eyeRunway = document.getElementById("eye-anim-runway");
+  const eyeCanvas = document.getElementById("eye-anim-canvas") as HTMLCanvasElement | null;
+  const eyeStatus = document.getElementById("eye-anim-status");
+  const eyeBar = document.getElementById("eye-anim-bar");
+  const iconColEls = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-icon-col]")
+  ).map((el) => ({
+    el,
+    speed: parseFloat(el.dataset.speed || "0.6"),
+  }));
+
+  if (eyeRunway && eyeCanvas) {
+    const ctx = eyeCanvas.getContext("2d", { alpha: false });
+    const stripSrc = eyeRunway.dataset.stripSrc || "/art/gif/eye-strip.webp";
+    const totalFrames = parseInt(eyeRunway.dataset.frames || "34", 10);
+    const frameW = 480;
+    const frameH = 480;
+
+    const stripImg = new Image();
+    stripImg.decoding = "async";
+    let stripLoading = false;
+    let stripReady = false;
+    let currentFrame = -1;
+    let lastStatusText = "";
+    let lastBarScale = -1;
+    let isRunwayNear = false;
+    let runwayTop = 0;
+    let lockSpan = 1;
+    let eyeRafId = 0;
+
+    function measureRunway() {
+      const rect = eyeRunway!.getBoundingClientRect();
+      runwayTop = rect.top + window.scrollY;
+      lockSpan = Math.max(1, eyeRunway!.offsetHeight - window.innerHeight);
+    }
+
+    function loadStrip() {
+      if (stripLoading) return;
+      stripLoading = true;
+      stripImg.onload = () => {
+        stripReady = true;
+        measureRunway();
+        updateEyeAnimation();
+      };
+      stripImg.src = stripSrc;
+    }
+
+    function drawFrame(frameIdx: number) {
+      if (!stripReady || !ctx) return;
+      const clamped = ((frameIdx % totalFrames) + totalFrames) % totalFrames;
+      if (clamped === currentFrame) return;
+      currentFrame = clamped;
+
+      ctx.drawImage(
+        stripImg,
+        0,
+        clamped * frameH,
+        frameW,
+        frameH,
+        0,
+        0,
+        frameW,
+        frameH
+      );
+    }
+
+    function updateEyeAnimation() {
+      eyeRafId = 0;
+      if (!isRunwayNear) return;
+      const scrolled = window.scrollY - runwayTop;
+      // Play all 34 frames + first 6 frames of the next loop (40 frame steps, ending on 06 / 34) while locked
+      const lockedFrameSteps = totalFrames + 6;
+
+      let frameIdx = 0;
+      let barProgress = 0;
+      let statusLabel = "LOCKED";
+
+      if (scrolled <= 0) {
+        // Approaching center before lock
+        frameIdx = 0;
+        barProgress = 0;
+        statusLabel = "SCROLL";
+      } else if (scrolled <= lockSpan) {
+        // Centered & scroll-locked: plays 01..34 then 01..06 so the eye re-opens before unlocking
+        const progress = scrolled / lockSpan;
+        const step = Math.min(lockedFrameSteps - 1, Math.floor(progress * lockedFrameSteps));
+        frameIdx = step % totalFrames;
+        barProgress = progress;
+        statusLabel = "LOCKED";
+      } else {
+        // Unlocked after reaching frame 6 of loop 2: continues seamlessly from frame 7 onward as you scroll down
+        const progress = scrolled / lockSpan;
+        const step = Math.floor(progress * lockedFrameSteps);
+        frameIdx = ((step % totalFrames) + totalFrames) % totalFrames;
+        barProgress = 1;
+        statusLabel = "LOOP";
+      }
+
+      drawFrame(frameIdx);
+
+      // Scroll each staggered column of eye & sun icons upward at its own parallax speed while the eye animation plays
+      if (iconColEls.length) {
+        const activeScroll = Math.max(0, scrolled);
+        for (let i = 0; i < iconColEls.length; i++) {
+          const { el, speed } = iconColEls[i];
+          const shiftY = activeScroll * speed;
+          el.style.transform = `translate3d(0, ${-shiftY.toFixed(1)}px, 0)`;
+        }
+      }
+
+      const quantizedBar = Math.round(barProgress * 1000) / 1000;
+      if (eyeBar && quantizedBar !== lastBarScale) {
+        lastBarScale = quantizedBar;
+        eyeBar.style.transform = `scaleX(${quantizedBar})`;
+      }
+      if (eyeStatus) {
+        const num = String(frameIdx + 1).padStart(2, "0");
+        const nextText = `${num} / ${totalFrames} · ${statusLabel}`;
+        if (nextText !== lastStatusText) {
+          lastStatusText = nextText;
+          eyeStatus.textContent = nextText;
+        }
+      }
+    }
+
+    function scheduleEyeUpdate() {
+      if (isRunwayNear && !eyeRafId) {
+        eyeRafId = requestAnimationFrame(updateEyeAnimation);
+      }
+    }
+
+    // Start loading eye-strip.webp 1800px before the user reaches the runway (not blocking Hero boot)
+    const preloadIo = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadStrip();
+          preloadIo.disconnect();
+        }
+      },
+      { rootMargin: "1800px" }
+    );
+    preloadIo.observe(eyeRunway);
+
+    // Gate scroll updates to only when the runway is near the viewport
+    const activeIo = new IntersectionObserver(
+      (entries) => {
+        isRunwayNear = entries[0]?.isIntersecting ?? false;
+        if (isRunwayNear) {
+          loadStrip();
+          measureRunway();
+          updateEyeAnimation();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    activeIo.observe(eyeRunway);
+
+    window.addEventListener("scroll", scheduleEyeUpdate, { passive: true });
+    window.addEventListener(
+      "resize",
+      () => {
+        measureRunway();
+        scheduleEyeUpdate();
+      },
+      { passive: true }
+    );
+    measureRunway();
+  }
+</script>

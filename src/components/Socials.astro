@@ -1,0 +1,42 @@
+---
+import { site, socials } from "../data/site";
+const year = new Date().getFullYear();
+---
+<section
+  id="socials"
+  data-parallax-root
+  class="relative overflow-x-clip border-t-2 border-paper/30 bg-ink px-5 pb-12 pt-28 text-paper md:px-10 md:pt-40"
+>
+  <div class="relative z-10 mx-auto max-w-[1520px]">
+    <p class="mb-6 font-mono text-xs font-bold uppercase tracking-[0.2em]">
+      <span class="text-ochre">03 //</span> Socials
+    </p>
+    <h2 class="font-display text-[length:clamp(3rem,11.5vw,11.5rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
+      Let's make <span class="font-serif italic font-normal lowercase text-accent">something.</span>
+    </h2>
+
+    <a href={`mailto:${site.email}`} class="group mt-14 flex items-baseline justify-between gap-4 border-y-2 border-paper/30 py-6 font-display text-2xl font-extrabold uppercase tracking-[-0.02em] transition-colors duration-500 hover:text-ochre md:mt-20 md:text-5xl">
+      <span>{site.email}</span>
+      <span class="transition-transform duration-500 ease-weighty group-hover:translate-x-2 group-hover:-translate-y-2">↗</span>
+    </a>
+
+    <ul>
+      {socials.map((s) => (
+        <li class="border-b border-paper/25">
+          <a href={s.href} target="_blank" rel="noopener noreferrer" class="group flex items-baseline justify-between gap-4 py-5 transition-colors duration-500 hover:text-accent md:py-7">
+            <span class="font-display text-2xl font-extrabold uppercase tracking-[-0.02em] md:text-4xl">{s.label}</span>
+            <span class="flex items-baseline gap-4 font-mono text-xs uppercase tracking-[0.14em] text-paper/65 group-hover:text-accent">
+              {s.handle}
+              <span class="text-base transition-transform duration-500 ease-weighty group-hover:translate-x-1 group-hover:-translate-y-1">↗</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <footer class="mt-20 flex flex-col justify-between gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-paper/55 md:flex-row">
+      <span>© {year} {site.name}</span>
+      <span>Built with Astro · Three.js · GSAP · Lenis</span>
+    </footer>
+  </div>
+</section>

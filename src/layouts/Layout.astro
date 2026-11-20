@@ -1,0 +1,151 @@
+---
+import "../styles/global.css";
+import { heroImage } from "../data/site";
+interface Props { title: string; description?: string }
+const { title, description = "Art portfolio and selected projects." } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <!-- Preload the 320x134 1:1 voxel color map so the 3D Hero colors immediately on boot -->
+    <link rel="preload" as="image" href={heroImage} type="image/webp" fetchpriority="high" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Space+Grotesk:wght@400&family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=visibility,wb_sunny&display=block"
+    />
+  </head>
+  <body class="antialiased">
+    <slot />
+
+    <script>
+      /**
+       * KINETIC COLLISION & SCROLL ENGINE
+       * Declarative attributes (all optional, unified into one GSAP tween per element):
+       *   data-parallax="N"        → element drifts yPercent -N → +N (or 0 → +N when start="top top")
+       *   data-splice-x="N"        → element slides xPercent 0 → N across the trigger
+       *   data-collide-x="A,B"     → element collides horizontally xPercent A → B
+       *   data-rotate="A,B"        → element tilts rotation A → B degrees
+       *   data-scale="A,B"         → element scales A → B
+       *   data-parallax-root       → stationary ancestor trigger (avoids feedback jitter)
+       *   data-parallax-start/end  → ScrollTrigger start/end strings (default "top bottom" / "bottom top")
+       */
+      import Lenis from "lenis";
+      import gsap from "gsap";
+      import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      // --- Scroll progress bar (cached maxScroll avoids layout queries on every scroll tick) ---
+      const bar = document.getElementById("scroll-progress");
+      let maxScroll = 1;
+      const measureMaxScroll = () => {
+        maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      };
+      const updateProgress = () => {
+        if (!bar) return;
+        const p = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
+        bar.style.transform = `scaleX(${p.toFixed(4)})`;
+      };
+      measureMaxScroll();
+      updateProgress();
+      window.addEventListener(
+        "resize",
+        () => {
+          measureMaxScroll();
+          updateProgress();
+        },
+        { passive: true }
+      );
+
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // --- Smooth scroll (Lenis) wired into GSAP's ticker ---
+      if (!reduced) {
+        const lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 });
+        window.__lenis = lenis;
+        lenis.on("scroll", () => {
+          ScrollTrigger.update();
+          updateProgress();
+        });
+        gsap.ticker.add((t) => lenis.raf(t * 1000));
+        gsap.ticker.lagSmoothing(0);
+
+        // Anchor links glide with Lenis instead of jumping.
+        document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {
+          a.addEventListener("click", (e) => {
+            const id = a.getAttribute("href")!;
+            const target = id === "#" ? null : document.querySelector<HTMLElement>(id);
+            if (!target) return;
+            e.preventDefault();
+            lenis.scrollTo(target, { duration: 1.4 });
+          });
+        });
+      } else {
+        window.addEventListener("scroll", updateProgress, { passive: true });
+      }
+
+      // --- Unified Parallax + Collision: desktop/tablet only. Reverts cleanly below 768px. ---
+      const mm = gsap.matchMedia();
+      mm.add("(min-width: 768px) and (prefers-reduced-motion: no-preference)", () => {
+        const rootOf = (el: HTMLElement) =>
+          el.closest<HTMLElement>("[data-parallax-root]") ?? el.parentElement!;
+
+        const parsePair = (raw: string): [number, number] => {
+          const [a = "0", b = "0"] = raw.split(",").map((s) => s.trim());
+          return [parseFloat(a) || 0, parseFloat(b) || 0];
+        };
+
+        const selector = "[data-parallax], [data-splice-x], [data-collide-x], [data-rotate], [data-scale]";
+        document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+          const root = rootOf(el);
+          const start = root.dataset.parallaxStart ?? "top bottom";
+          const end = root.dataset.parallaxEnd ?? "bottom top";
+
+          const fromVars: gsap.TweenVars = {};
+          const toVars: gsap.TweenVars = { ease: "none" };
+
+          if (el.dataset.parallax !== undefined) {
+            const v = parseFloat(el.dataset.parallax) || 0;
+            fromVars.yPercent = start === "top top" ? 0 : -v;
+            toVars.yPercent = v;
+          }
+
+          if (el.dataset.collideX !== undefined) {
+            const [fromX, toX] = parsePair(el.dataset.collideX);
+            fromVars.xPercent = fromX;
+            toVars.xPercent = toX;
+          } else if (el.dataset.spliceX !== undefined) {
+            const v = parseFloat(el.dataset.spliceX) || 0;
+            fromVars.xPercent = 0;
+            toVars.xPercent = v;
+          }
+
+          if (el.dataset.rotate !== undefined) {
+            const [fromR, toR] = parsePair(el.dataset.rotate);
+            fromVars.rotation = fromR;
+            toVars.rotation = toR;
+          }
+
+          if (el.dataset.scale !== undefined) {
+            const [fromS, toS] = parsePair(el.dataset.scale);
+            fromVars.scale = fromS;
+            toVars.scale = toS;
+          }
+
+          toVars.scrollTrigger = { trigger: root, start, end, scrub: true };
+          gsap.fromTo(el, fromVars, toVars);
+        });
+      });
+    </script>
+  </body>
+</html>

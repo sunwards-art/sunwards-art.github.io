@@ -1,0 +1,463 @@
+---
+import { heroImage } from "../data/site";
+
+const heroFullImage = "/art/showcase/sunwards-eyes-full.webp";
+const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE // ARCHIVE 2026 // ";
+---
+<section
+  id="top"
+  class="hero-runway relative h-[285svh] bg-ink"
+  data-hero-image={heroImage}
+>
+  <!-- Sticky 100svh viewport where the 3D particle buildup takes place -->
+  <div class="sticky top-0 h-[100svh] w-full overflow-hidden bg-ink">
+    <canvas
+      id="voxel-canvas"
+      class="block h-full w-full"
+      aria-label="Interactive 3D particle buildup of Sunwards — Gaze"
+    ></canvas>
+
+    <!-- Full-resolution painting overlay aligned 1:1 with the converged 3D grid at r === 1 -->
+    <img
+      id="hero-full-img"
+      src={heroFullImage}
+      alt="Sunwards — Gaze full resolution painting"
+      decoding="async"
+      fetchpriority="low"
+      class="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 object-cover opacity-0 transition-opacity duration-500 ease-out will-change-[opacity]"
+    />
+
+    <!-- Title ONLY: "The Art of Sunwards" scrolling with parallax -->
+    <div
+      id="hero-title"
+      class="pointer-events-none absolute inset-x-0 bottom-16 z-20 px-5 will-change-transform md:bottom-20 md:px-10"
+    >
+      <div class="mx-auto max-w-[1520px]">
+        <h1 class="select-none">
+          <span class="block font-display text-[length:clamp(1.2rem,2.6vw,2.4rem)] font-extrabold uppercase leading-[0.95] tracking-[-0.02em] text-paper drop-shadow-[0_6px_28px_rgba(14,14,13,0.9)]">
+            The Art of
+          </span>
+          <span class="block font-display text-[length:clamp(2rem,5.4vw,5.4rem)] font-extrabold uppercase leading-[0.88] tracking-[-0.04em] text-accent drop-shadow-[0_8px_36px_rgba(14,14,13,0.95)]">
+            Sunwards
+          </span>
+        </h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kinetic ticker ribbon separating Hero & Art -->
+  <div class="absolute inset-x-0 bottom-0 z-30 overflow-hidden border-y-2 border-ink bg-accent py-2 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-ink">
+    <div class="marquee-track whitespace-nowrap">
+      <span>{tickerText.repeat(6)}</span>
+      <span aria-hidden="true">{tickerText.repeat(6)}</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  /**
+   * 3D PARTICLE BUILDUP HERO WITH MOUSE & SCROLL PARALLAX
+   * - 320x134 circular particles scattered in 3D depth.
+   * - Mouse movement shifts camera (x, y) while looking at (0, 0, 0), creating real-time
+   *   3D depth parallax across the particles.
+   * - As scroll buildup progresses (r: 0 -> 1), camera Z retreats from initCameraZ to
+   *   targetCameraZ and mouse parallax dampens to 0.
+   * - When scrolling is done (r >= 0.99), mouse & scroll parallax disable, locking the
+   *   camera at (0, 0, targetCameraZ) and crossfading into the full-resolution painting.
+   * - When scrolling back up (r < 0.99), the full-res image fades out and both mouse and
+   *   scroll parallax immediately become active again.
+   */
+  import gsap from "gsap";
+
+  const runway = document.getElementById("top");
+  const canvas = document.getElementById("voxel-canvas") as HTMLCanvasElement | null;
+  const fullImg = document.getElementById("hero-full-img") as HTMLImageElement | null;
+  const titleEl = document.getElementById("hero-title");
+
+  if (runway && canvas) {
+    const imgUrl = runway.dataset.heroImage || "/art/showcase/sunwards-eyes-grid.webp";
+    // 1600 / 5 = 320, 670 / 5 = 134 -> exact 1:1 aspect ratio match (42,880 particles)
+    const nCol = 320;
+    const nRow = 134;
+    const numInstances = nCol * nRow;
+    const instanceSize = 1;
+    const targetCameraZ = 220;
+    const randRangeZ = 2 * targetCameraZ * 0.99;
+    const initCameraZ = targetCameraZ / 5;
+
+    // Maximum camera XY offset from mouse movement (at r = 0) — gentle, slow drift
+    const maxMouseCamX = 16;
+    const maxMouseCamY = 10;
+
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let showingFullRes = false;
+    let currentR = reduced ? 1 : 0;
+    let currentRaw = reduced ? 1 : 0;
+    let pointerX = 0; // normalized -1 .. +1
+    let pointerY = 0; // normalized -1 .. +1
+
+    const camPos = {
+      x: 0,
+      y: 0,
+      z: reduced ? targetCameraZ : initCameraZ,
+    };
+    let camFovDeg = 60;
+    let camAspect = 2;
+
+    const gl = canvas.getContext("webgl2", {
+      alpha: true,
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+
+    if (gl) {
+      const vsSource = `#version 300 es
+      layout(location = 0) in vec3 a_pos;
+      layout(location = 1) in vec4 a_inst; // xyz = world position, w = uniform scale
+      layout(location = 2) in vec4 a_col;  // normalized RGBA bytes
+
+      uniform vec3 u_camPos;
+      uniform vec3 u_camRight;
+      uniform vec3 u_camUp;
+      uniform vec3 u_camFwd;
+      uniform vec4 u_proj; // x = f/aspect, y = f, z = (far+near)/(near-far), w = (2*far*near)/(near-far)
+
+      out vec3 v_col;
+
+      void main() {
+        vec3 worldPos = a_pos * a_inst.w + a_inst.xyz;
+        vec3 rel = worldPos - u_camPos;
+        float ex = dot(rel, u_camRight);
+        float ey = dot(rel, u_camUp);
+        float ez = dot(rel, u_camFwd);
+        gl_Position = vec4(ex * u_proj.x, ey * u_proj.y, ez * u_proj.z + u_proj.w, -ez);
+        v_col = a_col.rgb;
+      }`;
+
+      const fsSource = `#version 300 es
+      precision mediump float;
+      in vec3 v_col;
+      out vec4 outColor;
+      void main() {
+        outColor = vec4(v_col, 1.0);
+      }`;
+
+      const compileShader = (type: number, src: string) => {
+        const s = gl.createShader(type)!;
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        return s;
+      };
+
+      const prog = gl.createProgram()!;
+      gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      const uCamPos = gl.getUniformLocation(prog, "u_camPos");
+      const uCamRight = gl.getUniformLocation(prog, "u_camRight");
+      const uCamUp = gl.getUniformLocation(prog, "u_camUp");
+      const uCamFwd = gl.getUniformLocation(prog, "u_camFwd");
+      const uProj = gl.getUniformLocation(prog, "u_proj");
+
+      // Welded 16-segment front disc + cylinder barrel (32 vertices, 46 triangles)
+      const sz = instanceSize;
+      const radius = sz * 0.58;
+      const segs = 16;
+      const positions = new Float32Array(segs * 2 * 3);
+      for (let k = 0; k < segs; k++) {
+        const theta = (k / segs) * Math.PI * 2;
+        const x = Math.cos(theta) * radius;
+        const y = Math.sin(theta) * radius;
+        positions[k * 3] = x;
+        positions[k * 3 + 1] = y;
+        positions[k * 3 + 2] = 0;
+        const b = (k + segs) * 3;
+        positions[b] = x;
+        positions[b + 1] = y;
+        positions[b + 2] = -sz;
+      }
+
+      const indices: number[] = [];
+      for (let k = 1; k < segs - 1; k++) {
+        indices.push(0, k, k + 1);
+      }
+      for (let k = 0; k < segs; k++) {
+        const next = (k + 1) % segs;
+        const backK = k + segs;
+        const backNext = next + segs;
+        indices.push(k, backK, next, next, backK, backNext);
+      }
+      const indexArray = new Uint16Array(indices);
+      const indexCount = indexArray.length;
+
+      // Packed 4-float instance buffer (px, py, pz, scale) = 16 bytes/instance (75% smaller than mat4)
+      const instData = new Float32Array(numInstances * 4);
+      for (let i = 0, c = 0; i < nRow; ++i) {
+        for (let j = 0; j < nCol; ++j) {
+          const x = (j - nCol / 2 + 0.5) * sz;
+          const y = (nRow / 2 - i + 0.5) * sz;
+          const targetZ = (Math.random() - 0.5) * randRangeZ * sz;
+          const s = (-targetZ + targetCameraZ) / targetCameraZ;
+          const o = c * 4;
+          instData[o] = x * s;
+          instData[o + 1] = y * s;
+          instData[o + 2] = targetZ;
+          instData[o + 3] = s;
+          ++c;
+        }
+      }
+
+      // Packed 4-byte RGBA instance color buffer (initial white, updated in 1 GPU upload on image load)
+      const colorBytes = new Uint8Array(numInstances * 4);
+      colorBytes.fill(255);
+
+      const vao = gl.createVertexArray()!;
+      gl.bindVertexArray(vao);
+
+      const posBuf = gl.createBuffer()!;
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+      const idxBuf = gl.createBuffer()!;
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
+
+      const instBuf = gl.createBuffer()!;
+      gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, instData, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(1);
+      gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(1, 1);
+
+      const colBuf = gl.createBuffer()!;
+      gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, colorBytes, gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(2);
+      gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+      gl.vertexAttribDivisor(2, 1);
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.cullFace(gl.BACK);
+      gl.clearColor(0, 0, 0, 0);
+
+      let isHeroVisible = true;
+      let renderScheduled = false;
+
+      function setFullResVisible(visible: boolean) {
+        if (!fullImg || showingFullRes === visible) return;
+        showingFullRes = visible;
+        fullImg.style.opacity = visible ? "1" : "0";
+      }
+
+      function syncFullResOverlay() {
+        const isScrollComplete = currentR >= 0.985;
+        // Crossfade into the full-res painting as the camera settles into the ordered grid
+        const isCameraOrdered =
+          reduced ||
+          (Math.abs(camPos.z - targetCameraZ) < 4.5 &&
+            Math.abs(camPos.x) < 0.8 &&
+            Math.abs(camPos.y) < 0.8);
+        setFullResVisible(isScrollComplete && isCameraOrdered);
+      }
+
+      const renderOnce = () => {
+        renderScheduled = false;
+        if (!isHeroVisible) return;
+
+        // Orthonormal camera basis for lookAt(0, 0, 0) with up = (0, 1, 0)
+        const cx = camPos.x;
+        const cy = camPos.y;
+        const cz = camPos.z;
+        const lenF = Math.hypot(cx, cy, cz) || 1;
+        const fx = cx / lenF;
+        const fy = cy / lenF;
+        const fz = cz / lenF;
+
+        // right = normalize(cross((0,1,0), fwd)) = normalize((fz, 0, -fx))
+        const lenR = Math.hypot(fz, fx) || 1;
+        const rx = fz / lenR;
+        const ry = 0;
+        const rz = -fx / lenR;
+
+        // up = cross(fwd, right)
+        const ux = fy * rz - fz * ry;
+        const uy = fz * rx - fx * rz;
+        const uz = fx * ry - fy * rx;
+
+        const fovRad = (camFovDeg * Math.PI) / 180;
+        const f = 1 / Math.tan(fovRad * 0.5);
+        const near = 0.5;
+        const far = 1200;
+        const nf = 1 / (near - far);
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.uniform3f(uCamPos, cx, cy, cz);
+        gl.uniform3f(uCamRight, rx, ry, rz);
+        gl.uniform3f(uCamUp, ux, uy, uz);
+        gl.uniform3f(uCamFwd, fx, fy, fz);
+        gl.uniform4f(uProj, f / camAspect, f, (far + near) * nf, 2 * far * near * nf);
+
+        gl.drawElementsInstanced(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0, numInstances);
+        syncFullResOverlay();
+      };
+
+      const scheduleRender = () => {
+        if (!renderScheduled && isHeroVisible) {
+          renderScheduled = true;
+          requestAnimationFrame(renderOnce);
+        }
+      };
+
+      // Sample pixel colors from the preloaded 320x134 sunwards-eyes-grid.webp directly into the GPU buffer
+      const img = new Image();
+      img.crossOrigin = "";
+      img.onload = () => {
+        const { width, height } = img;
+        const can = document.createElement("canvas");
+        can.height = nRow;
+        can.width = nCol;
+        const ctx = can.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height, 0, 0, can.width, can.height);
+        const { data } = ctx.getImageData(0, 0, can.width, can.height);
+        gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
+        scheduleRender();
+      };
+      img.src = imgUrl;
+
+      let cachedScrollSpan = 1;
+      let cachedViewH = window.innerHeight;
+      let cachedViewW = window.innerWidth;
+
+      function resize() {
+        const w = canvas!.clientWidth || window.innerWidth;
+        const h = canvas!.clientHeight || window.innerHeight;
+        cachedViewW = window.innerWidth;
+        cachedViewH = window.innerHeight;
+        cachedScrollSpan = Math.max(1, runway!.offsetHeight - cachedViewH);
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const pw = Math.round(w * dpr);
+        const ph = Math.round(h * dpr);
+        if (canvas!.width !== pw || canvas!.height !== ph) {
+          canvas!.width = pw;
+          canvas!.height = ph;
+        }
+        gl!.viewport(0, 0, pw, ph);
+
+        camAspect = w / h;
+
+        // Dynamically fit the assembled 320x134 canvas at z = targetCameraZ
+        const gridW = nCol * instanceSize;
+        const gridH = nRow * instanceSize;
+        const fitHeightForWidth = gridW / 0.92 / camAspect;
+        const fitHeightForHeight = gridH / 0.84;
+        const visibleHeight = Math.max(fitHeightForWidth, fitHeightForHeight);
+        const fovRad = 2 * Math.atan(visibleHeight / (2 * targetCameraZ));
+        const fovDeg = (fovRad * 180) / Math.PI;
+        camFovDeg = Math.min(95, Math.max(28, fovDeg));
+
+        // Size the full-res overlay to match the exact projected bounding box at z = targetCameraZ
+        if (fullImg) {
+          const actualVisH = 2 * targetCameraZ * Math.tan(((camFovDeg * Math.PI) / 180) * 0.5);
+          const pxH = (gridH / actualVisH) * h;
+          const pxW = (gridW / actualVisH) * h;
+          fullImg.style.width = `${pxW}px`;
+          fullImg.style.height = `${pxH}px`;
+        }
+
+        renderOnce();
+      }
+
+      window.addEventListener("resize", resize, { passive: true });
+      resize();
+
+      // Reusable gsap.quickTo controllers eliminate per-event Tween allocations on pointermove & scroll
+      const camXTo = !reduced
+        ? gsap.quickTo(camPos, "x", { duration: 0.8, ease: "power3.out", onUpdate: scheduleRender })
+        : null;
+      const camYTo = !reduced
+        ? gsap.quickTo(camPos, "y", { duration: 0.8, ease: "power3.out", onUpdate: scheduleRender })
+        : null;
+      const camZTo = !reduced
+        ? gsap.quickTo(camPos, "z", { duration: 0.8, ease: "power3.out", onUpdate: scheduleRender })
+        : null;
+      const titleXTo =
+        !reduced && titleEl ? gsap.quickTo(titleEl, "x", { duration: 0.8, ease: "power3.out" }) : null;
+      const titleYTo =
+        !reduced && titleEl ? gsap.quickTo(titleEl, "y", { duration: 0.8, ease: "power3.out" }) : null;
+
+      function updateCameraAndTitle() {
+        const isComplete = currentR >= 0.985;
+        // Disable mouse parallax once the scroll buildup is complete (r >= 0.985),
+        // and smoothly scale mouse parallax by (1 - currentR) when scrolling back up.
+        const mouseFactor = isComplete || reduced ? 0 : 1 - currentR;
+
+        const targetX = pointerX * maxMouseCamX * mouseFactor;
+        const targetY = pointerY * maxMouseCamY * mouseFactor;
+        const targetZ = isComplete
+          ? targetCameraZ
+          : initCameraZ + (targetCameraZ - initCameraZ) * currentR;
+
+        if (!reduced) {
+          camXTo?.(targetX);
+          camYTo?.(targetY);
+          camZTo?.(targetZ);
+
+          if (titleXTo && titleYTo) {
+            // Rise from bottom to the upper inside of the hero painting as currentR goes 0 -> 1, then hold there
+            const scrollYShift = -currentR * cachedViewH * 0.65;
+            const mouseXShift = -pointerX * 10 * mouseFactor;
+            const mouseYShift = pointerY * 6 * mouseFactor;
+            titleXTo(mouseXShift);
+            titleYTo(scrollYShift + mouseYShift);
+          }
+        }
+
+        syncFullResOverlay();
+      }
+
+      function updateOnScroll() {
+        if (!isHeroVisible) return;
+        const raw = Math.min(1, Math.max(0, window.scrollY / cachedScrollSpan));
+        currentRaw = reduced ? 1 : raw;
+        // Complete particle buildup at 62% of the 185svh sticky runway (~115svh buildup),
+        // leaving ~70svh of hold (2 wheel movements shorter) before scrolling into Selected Works.
+        currentR = reduced ? 1 : Math.min(1, raw / 0.62);
+        updateCameraAndTitle();
+      }
+
+      window.addEventListener(
+        "pointermove",
+        (e) => {
+          if (reduced || !isHeroVisible) return;
+          pointerX = (e.clientX / cachedViewW - 0.5) * 2;
+          pointerY = -(e.clientY / cachedViewH - 0.5) * 2;
+          updateCameraAndTitle();
+        },
+        { passive: true }
+      );
+
+      window.addEventListener("scroll", updateOnScroll, { passive: true });
+      updateOnScroll();
+
+      // Gate rendering when Hero is scrolled completely out of view
+      const io = new IntersectionObserver(
+        (entries) => {
+          isHeroVisible = entries[0]?.isIntersecting ?? true;
+          if (isHeroVisible) {
+            scheduleRender();
+          }
+        },
+        { threshold: 0 }
+      );
+      io.observe(runway);
+    }
+  }
+</script>

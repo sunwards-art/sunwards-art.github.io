@@ -1,0 +1,492 @@
+---
+import { projects } from "../data/projects";
+
+const accentBorder = {
+  accent: "border-accent",
+  ochre: "border-ochre",
+  mint: "border-mint",
+};
+
+const accentBg = {
+  accent: "bg-accent text-ink",
+  ochre: "bg-ochre text-ink",
+  mint: "bg-mint text-ink",
+};
+---
+<section
+  id="projects"
+  class="relative overflow-hidden bg-ink pb-20 pt-16 text-paper md:pb-28 md:pt-24"
+>
+  <!-- Background isometric blueprint grid lines -->
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0 opacity-[0.06]"
+    style="background-image: linear-gradient(to right, #EFEBE0 1px, transparent 1px), linear-gradient(to bottom, #EFEBE0 1px, transparent 1px); background-size: 64px 64px;"
+  ></div>
+
+  <!-- Section Header -->
+  <header class="relative z-20 mx-auto mb-2 flex max-w-[1520px] flex-col justify-between gap-6 px-5 md:mb-4 md:flex-row md:items-end md:px-10">
+    <div>
+      <div class="mb-3 flex flex-wrap items-center gap-4 font-mono text-xs font-bold uppercase tracking-[0.2em]">
+        <span class="text-ochre">02 // ARCHIVE</span>
+        <span class="text-paper/60">ISOMETRIC SCROLLING GRID · HOVER TO LIFT 3D STACK</span>
+      </div>
+      <h2 class="font-display text-[length:clamp(3.1rem,11vw,10rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
+        Other <span class="font-serif italic font-normal lowercase text-accent">projects</span>
+      </h2>
+    </div>
+
+    <div class="max-w-sm border-l-2 border-accent pl-4">
+      <p class="font-mono text-xs uppercase leading-relaxed tracking-[0.14em] text-paper/75">
+        Games, 3D tools, apps, and art communities. Click any project plate to launch.
+      </p>
+    </div>
+  </header>
+
+  <!-- Isometric Scrolling Grid Stage (Codrops IsometricGrids architecture) -->
+  <div
+    id="iso-scroll-viewport"
+    class="iso-viewport relative mx-auto flex w-full max-w-[1600px] items-start justify-center px-4 pb-12 pt-0 md:pb-16 md:pt-2"
+  >
+    <!-- Giant ghost label behind the isometric plane -->
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 top-1/2 z-0 -translate-y-1/2 select-none text-center font-display text-[19vw] font-extrabold uppercase leading-none tracking-[-0.05em] text-paper opacity-[0.03]"
+    >
+      ISOMETRIC
+    </div>
+
+    <div class="isolayer isolayer--shadow" id="isolayer">
+      <ul class="iso-grid" id="iso-grid">
+        {projects.map((p, idx) => {
+          const Tag = p.href ? "a" : "button";
+          const linkProps = p.href
+            ? {
+                href: p.href,
+                target: "_blank",
+                rel: "noopener noreferrer",
+              }
+            : {
+                type: "button" as const,
+                "data-coming-soon": "true",
+              };
+
+          return (
+            <li
+              class:list={[
+                "iso-item",
+                idx % 2 === 1 ? "iso-item--stagger" : "",
+              ]}
+              data-iso-item
+              data-project-id={p.id}
+            >
+              <Tag
+                {...linkProps}
+                class="iso-link group block w-full text-left focus:outline-none"
+                aria-label={`${p.title} — ${p.hook}`}
+              >
+                <!-- 1. FLAT STATIONARY BASE FRAME (owns 100% of pointer hit-testing; never mutates during 3D lift) -->
+                <div
+                  class:list={[
+                    "iso-base-frame relative border-2 bg-ink",
+                    accentBorder[p.accent],
+                  ]}
+                >
+                  <!-- Blueprint floor well (all children pointer-events-none so the frame is one solid hit surface) -->
+                  <div class="pointer-events-none relative aspect-[16/10] w-full bg-ink">
+                    <div
+                      class="absolute inset-0 flex flex-col justify-between border-b border-paper/20 bg-ink p-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40"
+                      aria-hidden="true"
+                    >
+                      <div class="flex justify-between">
+                        <span>PLATE // {p.num}</span>
+                        <span>ISO-3D</span>
+                      </div>
+                      <div class="my-auto border-y border-paper/15 py-2 text-center text-[9px] tracking-[0.25em]">
+                        {p.id.toUpperCase()} × {p.layers.length} IMAGES
+                      </div>
+                      <div class="flex justify-between">
+                        <span>BASE FRAME</span>
+                        <span>{p.status}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Stationary Project Metadata Bar (pointer-events-none so moving across text never switches hit targets) -->
+                  <div class="pointer-events-none border-t-2 border-paper/80 bg-ink p-3.5 text-paper md:p-4">
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <span
+                        class:list={[
+                          "px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em]",
+                          accentBg[p.accent],
+                        ]}
+                      >
+                        {p.num} // {p.category}
+                      </span>
+
+                      <span
+                        class:list={[
+                          "border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] transition-colors",
+                          p.comingSoon
+                            ? "border-ochre bg-ink text-ochre"
+                            : "border-paper/60 bg-ink text-paper group-hover:border-accent group-hover:bg-accent group-hover:text-ink",
+                        ]}
+                        data-status-pill
+                      >
+                        {p.status}
+                      </span>
+                    </div>
+
+                    <div class="mb-1 flex items-baseline justify-between gap-2">
+                      <h3 class="font-display text-lg font-extrabold uppercase leading-tight tracking-[-0.02em] text-paper transition-colors group-hover:text-accent md:text-xl">
+                        {p.title}
+                      </h3>
+                      <span class="shrink-0 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/55">
+                        {p.layers.length} {p.layers.length === 1 ? "IMG" : "IMGS"}
+                      </span>
+                    </div>
+
+                    <p class="font-sans text-xs leading-relaxed text-paper/80 md:text-[13px]">
+                      {p.hook}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- 2. SIBLING 3D IMAGE STACK STAGE (pointer-events-none; completely decoupled from base frame hit-testing) -->
+                <div class="iso-stack-stage pointer-events-none absolute inset-x-0 top-0 aspect-[16/10]">
+                  {p.layers.map((imgSrc, layerIdx) => {
+                    const isTop = layerIdx === p.layers.length - 1;
+                    const animSrc = p.animatedLayers?.[layerIdx];
+                    return (
+                      <div
+                        class:list={[
+                          "iso-layer iso-layer--media pointer-events-none",
+                          isTop ? "iso-layer--top" : "iso-layer--sub",
+                          accentBorder[p.accent],
+                        ]}
+                        data-layer-index={layerIdx}
+                        data-layer-total={p.layers.length}
+                      >
+                        <img
+                          src={imgSrc}
+                          data-static-src={animSrc ? imgSrc : undefined}
+                          data-anim-src={animSrc}
+                          alt={`${p.title} screenshot ${layerIdx + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          class="iso-img pointer-events-none h-full w-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </Tag>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ==========================================================================
+     CODROPS ISOMETRIC GRIDS — DECOUPLED FLAT HIT-FRAME + 3D IMAGE STACK
+     Adapted from https://github.com/codrops/IsometricGrids/
+     ========================================================================== */
+
+  .iso-viewport {
+    perspective: 2200px;
+  }
+
+  .isolayer {
+    position: relative;
+    width: 100%;
+    max-width: 920px;
+    /* Pull the top of the 45°-tilted diamond up so it sits close to the section title */
+    margin-top: -4.5rem;
+    margin-bottom: -3rem;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    transform-origin: 50% 50%;
+    /* Classic Codrops IsometricGrids 45° X + 45° Z rotation */
+    transform: rotateX(45deg) rotateZ(45deg);
+  }
+
+  .iso-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3.25rem 3.25rem;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  /* Masonry-style stagger on the second column just like Codrops IsometricGrids */
+  .iso-item--stagger {
+    margin-top: 4.5rem;
+  }
+
+  .iso-item {
+    position: relative;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .iso-link {
+    position: relative;
+    display: block;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    cursor: pointer;
+  }
+
+  /* Flat stationary base frame: transform-style: flat guarantees zero 3D BSP hit-test glitches over text */
+  .iso-base-frame {
+    position: relative;
+    transform-style: flat;
+    -webkit-transform-style: flat;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    box-shadow: 6px 6px 0 var(--color-accent);
+  }
+
+  /* Sibling 3D image stack stage sits over the top 16:10 box and never intercepts pointer events */
+  .iso-stack-stage {
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    pointer-events: none;
+  }
+
+  /* Codrops .isolayer--shadow 3D floor shadow */
+  .isolayer--shadow .iso-link::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 4px;
+    opacity: 0.7;
+    background: #050505;
+    transform: translateZ(-2px) scale(0.97);
+    transition:
+      transform 0.45s cubic-bezier(0.2, 1, 0.3, 1),
+      opacity 0.45s cubic-bezier(0.2, 1, 0.3, 1);
+    backface-visibility: hidden;
+    pointer-events: none;
+  }
+
+  .isolayer--shadow .iso-item.is-expanded .iso-link::before {
+    opacity: 0.5;
+    transform: translateZ(-6px) scale(1.03);
+  }
+
+  /* Stacked image layers inside the sibling 3D stage */
+  .iso-layer {
+    position: absolute;
+    inset: 0;
+    border-width: 2px;
+    background: var(--color-ink);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-origin: 50% 50%;
+    transition: transform 0.52s cubic-bezier(0.2, 1, 0.3, 1);
+    pointer-events: none;
+  }
+
+  .iso-layer--sub {
+    transform: translate3d(0, 0, 2px);
+  }
+
+  .iso-layer--top {
+    transform: translate3d(0, 0, 4px);
+  }
+
+  /* Responsive scaling so the 45° isometric grid fits tablet & mobile viewports cleanly */
+  @media (max-width: 1100px) {
+    .isolayer {
+      max-width: 720px;
+      margin-top: -3rem;
+      transform: scale(0.88) rotateX(45deg) rotateZ(45deg);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .isolayer {
+      max-width: 560px;
+      margin-top: -2rem;
+      transform: scale(0.76) rotateX(42deg) rotateZ(35deg);
+    }
+    .iso-grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+      max-width: 340px;
+    }
+    .iso-item--stagger {
+      margin-top: 0;
+    }
+  }
+</style>
+
+<script>
+  /**
+   * CODROPS ISOMETRIC SCROLLING GRID CONTROLLER
+   * - Decoupled flat hit surface (.iso-base-frame) + sibling 3D stack stage (.iso-stack-stage).
+   * - All inner children of .iso-base-frame have pointer-events: none so moving the cursor across
+   *   the title, description, and image well hits a single unchanging flat surface.
+   */
+  const viewport = document.getElementById("iso-scroll-viewport");
+  const gridEl = document.getElementById("iso-grid");
+  const items = Array.from(document.querySelectorAll<HTMLElement>("[data-iso-item]"));
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const layerRotations = [-1.5, 1.5, -1];
+  const leaveTimers = new WeakMap<HTMLElement, number>();
+
+  function expandItem(item: HTMLElement) {
+    const pendingTimer = leaveTimers.get(item);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      leaveTimers.delete(item);
+    }
+    if (item.classList.contains("is-expanded")) return;
+    item.classList.add("is-expanded");
+    const layers = Array.from(item.querySelectorAll<HTMLElement>(".iso-layer"));
+
+    layers.forEach((layer, pos) => {
+      const step = pos + 1;
+      const translateZ = step * 72;
+      const verticalShift = -step * 28;
+      const rotateZ = layerRotations[pos % layerRotations.length];
+      layer.style.transform = `translate3d(${verticalShift}px, ${verticalShift}px, ${translateZ}px) rotateZ(${rotateZ}deg)`;
+    });
+
+    // Swap any static poster images to animated WebP while hovered
+    item.querySelectorAll<HTMLImageElement>("img[data-anim-src]").forEach((img) => {
+      if (img.dataset.animSrc && img.src !== img.dataset.animSrc) {
+        img.src = img.dataset.animSrc;
+      }
+    });
+  }
+
+  function collapseItem(item: HTMLElement) {
+    if (!item.classList.contains("is-expanded")) return;
+    item.classList.remove("is-expanded");
+    const layers = Array.from(item.querySelectorAll<HTMLElement>(".iso-layer"));
+    layers.forEach((layer) => {
+      layer.style.transform = "";
+    });
+
+    // Revert animated WebP back to lightweight static poster when not hovered
+    item.querySelectorAll<HTMLImageElement>("img[data-static-src]").forEach((img) => {
+      if (img.dataset.staticSrc) {
+        img.src = img.dataset.staticSrc;
+      }
+    });
+  }
+
+  items.forEach((item) => {
+    item.addEventListener("pointerenter", () => {
+      if (!reduced) expandItem(item);
+    });
+    item.addEventListener("pointermove", () => {
+      if (!reduced) expandItem(item);
+    });
+    item.addEventListener("pointerleave", () => {
+      const timer = window.setTimeout(() => {
+        leaveTimers.delete(item);
+        collapseItem(item);
+      }, 45);
+      leaveTimers.set(item, timer);
+    });
+    item.addEventListener("focusin", () => {
+      if (!reduced) expandItem(item);
+    });
+    item.addEventListener("focusout", () => {
+      collapseItem(item);
+    });
+
+    // Coming soon projects: clicking cycles which uploaded screenshot is on top of the 3D stack
+    const comingSoonBtn = item.querySelector<HTMLElement>("[data-coming-soon]");
+    if (comingSoonBtn) {
+      comingSoonBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const imgs = Array.from(item.querySelectorAll<HTMLImageElement>(".iso-img"));
+        if (imgs.length > 1) {
+          const srcs = imgs.map((img) => img.src);
+          srcs.unshift(srcs.pop()!);
+          imgs.forEach((img, i) => {
+            img.src = srcs[i];
+          });
+        }
+        const pill = item.querySelector<HTMLElement>("[data-status-pill]");
+        if (pill) {
+          pill.textContent = "COMING SOON · LAYER CYCLED";
+          setTimeout(() => {
+            pill.textContent = "COMING SOON";
+          }, 1400);
+        }
+      });
+    }
+  });
+
+  // Zero-thrash isometric scroll glide: caches page offsets on resize and only runs while visible
+  if (viewport && gridEl && !reduced) {
+    let isSectionVisible = false;
+    let cachedTop = 0;
+    let cachedHeight = 1;
+    let viewH = window.innerHeight;
+    let rafId = 0;
+
+    function measureBounds() {
+      const rect = viewport!.getBoundingClientRect();
+      cachedTop = rect.top + window.scrollY;
+      cachedHeight = Math.max(1, viewport!.offsetHeight);
+      viewH = window.innerHeight;
+    }
+
+    function updateIsoScroll() {
+      rafId = 0;
+      if (!isSectionVisible) return;
+      const totalSpan = cachedHeight + viewH;
+      const elapsed = window.scrollY + viewH - cachedTop;
+      const progress = Math.min(1, Math.max(0, elapsed / totalSpan));
+      const isoTranslateY = (0.35 - progress) * 180;
+      gridEl!.style.transform = `translate3d(0, ${isoTranslateY.toFixed(1)}px, 0)`;
+    }
+
+    function onScroll() {
+      if (isSectionVisible && !rafId) {
+        rafId = requestAnimationFrame(updateIsoScroll);
+      }
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        isSectionVisible = entries[0]?.isIntersecting ?? false;
+        if (isSectionVisible) {
+          measureBounds();
+          updateIsoScroll();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    io.observe(viewport);
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener(
+      "resize",
+      () => {
+        measureBounds();
+        updateIsoScroll();
+      },
+      { passive: true }
+    );
+    measureBounds();
+  }
+</script>

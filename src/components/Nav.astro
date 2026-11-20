@@ -1,0 +1,21 @@
+---
+import { site } from "../data/site";
+---
+<!-- Scroll progress indicator pinned at the very top -->
+<div
+  id="scroll-progress"
+  class="pointer-events-none fixed inset-x-0 top-0 z-[70] h-[3px] origin-left scale-x-0 bg-accent will-change-transform"
+  aria-hidden="true"
+/>
+
+<!-- mix-blend-difference keeps the nav legible over both paper and ink spreads -->
+<header class="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-5 py-5 text-paper mix-blend-difference md:px-10">
+  <a href="#top" class="font-display text-sm font-extrabold uppercase tracking-[0.08em] md:text-base">{site.name}</a>
+  <nav class="flex gap-5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] md:gap-9 md:text-xs">
+    {site.nav.map((l) => (
+      <a href={l.href} class="relative after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-500 after:ease-weighty hover:after:scale-x-100">
+        {l.label}
+      </a>
+    ))}
+  </nav>
+</header>

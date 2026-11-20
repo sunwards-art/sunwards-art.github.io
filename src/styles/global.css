@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* ---------- Design tokens (Tailwind v4 @theme → utilities like bg-paper, text-accent) ---------- */
+@theme {
+  --color-paper: #EFEBE0;
+  --color-ink: #0E0E0D;
+  --color-accent: #E04420;
+  --color-ochre: #E89B26;
+  --color-mint: #5B9E94;
+
+  --font-display: "Syne", system-ui, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+
+  --ease-weighty: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ---------- Base ---------- */
+html { background: var(--color-ink); }
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overflow-x: clip; /* guards against horizontal overflow from colliding/offset elements */
+}
+::selection { background: var(--color-accent); color: var(--color-paper); }
+
+/* Paper grain: a fixed pre-baked alpha noise tile gives the page a tactile feel
+   without mix-blend-mode: multiply framebuffer readback or runtime SVG feTurbulence filter overhead. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background-image: url("/noise.webp");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
+/* ---------- Cutout & Collision Utilities ---------- */
+.cutout-shadow {
+  filter: drop-shadow(0 22px 28px rgba(14, 14, 13, 0.42));
+}
+.cutout-glow {
+  filter: drop-shadow(0 16px 32px rgba(91, 158, 148, 0.32));
+}
+.brutal-card-dark {
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+.brutal-card-accent {
+  box-shadow: 8px 8px 0 var(--color-accent);
+}
+.brutal-card-ochre {
+  box-shadow: 8px 8px 0 var(--color-ochre);
+}
+
+/* ---------- Kinetic Marquee ---------- */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
+
+/* ---------- Lenis required rules ---------- */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
