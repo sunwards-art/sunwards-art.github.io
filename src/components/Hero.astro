@@ -6,7 +6,7 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
 ---
 <section
   id="top"
-  class="hero-runway relative h-[285svh] bg-ink"
+  class="hero-runway relative h-[215svh] sm:h-[285svh] bg-ink"
   data-hero-image={heroImage}
 >
   <!-- Sticky 100svh viewport where the 3D particle buildup takes place -->
@@ -16,6 +16,30 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
       class="block h-full w-full"
       aria-label="Interactive 3D particle buildup of Sunwards — Gaze"
     ></canvas>
+
+    <!-- iOS gyroscope tilt permission pill (shown only on phone iOS Safari when permission is required) -->
+    <div
+      id="gyro-permission-bar"
+      class="pointer-events-auto absolute right-4 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] z-30 hidden items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] transition-opacity duration-300"
+    >
+      <button
+        id="gyro-enable-btn"
+        type="button"
+        class="flex min-h-[40px] cursor-pointer items-center gap-2 border border-paper/45 bg-ink/85 px-3.5 py-2 text-paper backdrop-blur-sm transition-colors active:border-accent active:text-accent"
+        aria-label="Enable gyroscope tilt parallax"
+      >
+        <span class="inline-block h-2 w-2 rounded-full bg-accent"></span>
+        <span>Enable Tilt</span>
+      </button>
+      <button
+        id="gyro-dismiss-btn"
+        type="button"
+        class="flex min-h-[40px] min-w-[36px] cursor-pointer items-center justify-center border border-paper/30 bg-ink/80 px-2 text-paper/70 backdrop-blur-sm active:text-paper"
+        aria-label="Dismiss tilt prompt"
+      >
+        ✕
+      </button>
+    </div>
 
     <!-- Full-resolution painting overlay aligned 1:1 with the converged 3D grid at r === 1 -->
     <img
@@ -30,7 +54,7 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
     <!-- Title ONLY: "The Art of Sunwards" scrolling with parallax -->
     <div
       id="hero-title"
-      class="pointer-events-none absolute inset-x-0 bottom-16 z-20 px-5 will-change-transform md:bottom-20 md:px-10"
+      class="pointer-events-none absolute inset-x-0 bottom-[max(5rem,calc(env(safe-area-inset-bottom)+3.75rem))] z-20 px-5 will-change-transform sm:bottom-16 md:bottom-20 md:px-10"
     >
       <div class="mx-auto max-w-[1520px]">
         <h1 class="select-none">
@@ -41,6 +65,35 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
             Sunwards
           </span>
         </h1>
+      </div>
+    </div>
+
+    <!-- Scroll-down indicator: right side on desktop/tablet, centered below title on mobile; fades out on scroll -->
+    <div
+      id="hero-scroll-indicator"
+      class="pointer-events-none absolute inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-20 px-5 transition-opacity duration-500 ease-out will-change-[opacity] sm:bottom-16 md:bottom-20 md:px-10"
+      aria-hidden="true"
+    >
+      <div class="mx-auto flex max-w-[1520px] justify-center sm:justify-end">
+        <div class="flex select-none items-center gap-2.5 drop-shadow-[0_4px_18px_rgba(14,14,13,0.95)]">
+          <span class="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-paper/90 sm:text-[11px]">
+            Scroll down
+          </span>
+          <svg
+            class="hero-scroll-arrow h-4 w-4 shrink-0 text-accent"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 2.5V13.5M8 13.5L3.5 9M8 13.5L12.5 9"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="square"
+              stroke-linejoin="miter"
+            />
+          </svg>
+        </div>
       </div>
     </div>
   </div>
@@ -54,45 +107,88 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
   </div>
 </section>
 
+<style>
+  @media (pointer: coarse) and (max-height: 500px) {
+    #top {
+      height: 215svh;
+    }
+  }
+
+  @keyframes hero-scroll-nudge {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(4px);
+    }
+  }
+
+  .hero-scroll-arrow {
+    animation: hero-scroll-nudge 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-scroll-arrow {
+      animation: none;
+    }
+  }
+</style>
+
 <script>
   /**
-   * 3D PARTICLE BUILDUP HERO WITH MOUSE & SCROLL PARALLAX
-   * - 320x134 circular particles scattered in 3D depth.
-   * - Mouse movement shifts camera (x, y) while looking at (0, 0, 0), creating real-time
-   *   3D depth parallax across the particles.
+   * 3D PARTICLE BUILDUP HERO WITH MOUSE, GYRO & SCROLL PARALLAX
+   * - 320x134 circular particles (160x67 on phones) scattered in 3D depth.
+   * - Mouse movement (desktop/tablet) or gyroscope tilt (phone) shifts camera (x, y) while looking at (0, 0, 0).
    * - As scroll buildup progresses (r: 0 -> 1), camera Z retreats from initCameraZ to
-   *   targetCameraZ and mouse parallax dampens to 0.
-   * - When scrolling is done (r >= 0.99), mouse & scroll parallax disable, locking the
+   *   targetCameraZ and parallax dampens to 0.
+   * - When scrolling is done (r >= 0.99), parallax disables, locking the
    *   camera at (0, 0, targetCameraZ) and crossfading into the full-resolution painting.
-   * - When scrolling back up (r < 0.99), the full-res image fades out and both mouse and
-   *   scroll parallax immediately become active again.
+   * - When scrolling back up (r < 0.99), the full-res image fades out and parallax immediately becomes active again.
    */
   import gsap from "gsap";
+  import { getMotionInput, isPhoneViewport } from "../lib/motionInput";
 
   const runway = document.getElementById("top");
   const canvas = document.getElementById("voxel-canvas") as HTMLCanvasElement | null;
   const fullImg = document.getElementById("hero-full-img") as HTMLImageElement | null;
   const titleEl = document.getElementById("hero-title");
+  const scrollIndicator = document.getElementById("hero-scroll-indicator");
+  const gyroBar = document.getElementById("gyro-permission-bar");
+  const gyroEnableBtn = document.getElementById("gyro-enable-btn");
+  const gyroDismissBtn = document.getElementById("gyro-dismiss-btn");
+
+  if (scrollIndicator) {
+    let isFaded = false;
+    const syncScrollIndicator = () => {
+      const nextFaded = window.scrollY > 10;
+      if (nextFaded === isFaded) return;
+      isFaded = nextFaded;
+      scrollIndicator.style.opacity = nextFaded ? "0" : "1";
+    };
+    window.addEventListener("scroll", syncScrollIndicator, { passive: true });
+    syncScrollIndicator();
+  }
 
   if (runway && canvas) {
+    const onPhone = isPhoneViewport();
     const imgUrl = runway.dataset.heroImage || "/art/showcase/sunwards-eyes-grid.webp";
-    // 1600 / 5 = 320, 670 / 5 = 134 -> exact 1:1 aspect ratio match (42,880 particles)
-    const nCol = 320;
-    const nRow = 134;
+    // Desktop/tablet: 320x134 (42,880 particles, size 1). Phone: 160x67 (10,720 particles, size 2) for identical 320x134 world bounds.
+    const nCol = onPhone ? 160 : 320;
+    const nRow = onPhone ? 67 : 134;
     const numInstances = nCol * nRow;
-    const instanceSize = 1;
+    const instanceSize = onPhone ? 2 : 1;
     const targetCameraZ = 220;
     const randRangeZ = 2 * targetCameraZ * 0.99;
-    const initCameraZ = targetCameraZ / 5;
+    let initCameraZ = targetCameraZ / 5;
 
-    // Maximum camera XY offset from mouse movement (at r = 0) — gentle, slow drift
-    const maxMouseCamX = 16;
-    const maxMouseCamY = 10;
+    // Maximum camera XY offset at r = 0 — gentle drift (slightly boosted for phone tilt)
+    const maxCamX = onPhone ? 20 : 16;
+    const maxCamY = onPhone ? 13 : 10;
 
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let showingFullRes = false;
+    let contextLost = false;
     let currentR = reduced ? 1 : 0;
-    let currentRaw = reduced ? 1 : 0;
     let pointerX = 0; // normalized -1 .. +1
     let pointerY = 0; // normalized -1 .. +1
 
@@ -104,11 +200,18 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
     let camFovDeg = 60;
     let camAspect = 2;
 
+    const rawDpr = window.devicePixelRatio || 1;
     const gl = canvas.getContext("webgl2", {
       alpha: true,
-      antialias: true,
+      antialias: onPhone ? rawDpr < 1.5 : true,
       powerPreference: "high-performance",
     });
+
+    if (!gl && fullImg) {
+      fullImg.style.opacity = "1";
+      fullImg.style.width = "94%";
+      fullImg.style.height = "auto";
+    }
 
     if (gl) {
       const vsSource = `#version 300 es
@@ -149,22 +252,10 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
         return s;
       };
 
-      const prog = gl.createProgram()!;
-      gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
-      gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
-      gl.linkProgram(prog);
-      gl.useProgram(prog);
-
-      const uCamPos = gl.getUniformLocation(prog, "u_camPos");
-      const uCamRight = gl.getUniformLocation(prog, "u_camRight");
-      const uCamUp = gl.getUniformLocation(prog, "u_camUp");
-      const uCamFwd = gl.getUniformLocation(prog, "u_camFwd");
-      const uProj = gl.getUniformLocation(prog, "u_proj");
-
-      // Welded 16-segment front disc + cylinder barrel (32 vertices, 46 triangles)
+      // Welded front disc + cylinder barrel (16 segments on desktop/tablet, 8 on phone)
       const sz = instanceSize;
       const radius = sz * 0.58;
-      const segs = 16;
+      const segs = onPhone ? 8 : 16;
       const positions = new Float32Array(segs * 2 * 3);
       for (let k = 0; k < segs; k++) {
         const theta = (k / segs) * Math.PI * 2;
@@ -198,7 +289,8 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
         for (let j = 0; j < nCol; ++j) {
           const x = (j - nCol / 2 + 0.5) * sz;
           const y = (nRow / 2 - i + 0.5) * sz;
-          const targetZ = (Math.random() - 0.5) * randRangeZ * sz;
+          // Depth stays inside [-randRangeZ/2, +randRangeZ/2] regardless of instanceSize
+          const targetZ = (Math.random() - 0.5) * randRangeZ;
           const s = (-targetZ + targetCameraZ) / targetCameraZ;
           const o = c * 4;
           instData[o] = x * s;
@@ -209,41 +301,64 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
         }
       }
 
-      // Packed 4-byte RGBA instance color buffer (initial white, updated in 1 GPU upload on image load)
+      // Packed 4-byte RGBA instance color buffer (initial white, updated on image load & context restore)
       const colorBytes = new Uint8Array(numInstances * 4);
       colorBytes.fill(255);
 
-      const vao = gl.createVertexArray()!;
-      gl.bindVertexArray(vao);
+      let uCamPos: WebGLUniformLocation | null = null;
+      let uCamRight: WebGLUniformLocation | null = null;
+      let uCamUp: WebGLUniformLocation | null = null;
+      let uCamFwd: WebGLUniformLocation | null = null;
+      let uProj: WebGLUniformLocation | null = null;
+      let colBuf: WebGLBuffer | null = null;
 
-      const posBuf = gl.createBuffer()!;
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(0);
-      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+      function initGLResources() {
+        const prog = gl!.createProgram()!;
+        gl!.attachShader(prog, compileShader(gl!.VERTEX_SHADER, vsSource));
+        gl!.attachShader(prog, compileShader(gl!.FRAGMENT_SHADER, fsSource));
+        gl!.linkProgram(prog);
+        gl!.useProgram(prog);
 
-      const idxBuf = gl.createBuffer()!;
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
+        uCamPos = gl!.getUniformLocation(prog, "u_camPos");
+        uCamRight = gl!.getUniformLocation(prog, "u_camRight");
+        uCamUp = gl!.getUniformLocation(prog, "u_camUp");
+        uCamFwd = gl!.getUniformLocation(prog, "u_camFwd");
+        uProj = gl!.getUniformLocation(prog, "u_proj");
 
-      const instBuf = gl.createBuffer()!;
-      gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, instData, gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(1);
-      gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
-      gl.vertexAttribDivisor(1, 1);
+        const vao = gl!.createVertexArray()!;
+        gl!.bindVertexArray(vao);
 
-      const colBuf = gl.createBuffer()!;
-      gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, colorBytes, gl.DYNAMIC_DRAW);
-      gl.enableVertexAttribArray(2);
-      gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, 0, 0);
-      gl.vertexAttribDivisor(2, 1);
+        const posBuf = gl!.createBuffer()!;
+        gl!.bindBuffer(gl!.ARRAY_BUFFER, posBuf);
+        gl!.bufferData(gl!.ARRAY_BUFFER, positions, gl!.STATIC_DRAW);
+        gl!.enableVertexAttribArray(0);
+        gl!.vertexAttribPointer(0, 3, gl!.FLOAT, false, 0, 0);
 
-      gl.enable(gl.DEPTH_TEST);
-      gl.enable(gl.CULL_FACE);
-      gl.cullFace(gl.BACK);
-      gl.clearColor(0, 0, 0, 0);
+        const idxBuf = gl!.createBuffer()!;
+        gl!.bindBuffer(gl!.ELEMENT_ARRAY_BUFFER, idxBuf);
+        gl!.bufferData(gl!.ELEMENT_ARRAY_BUFFER, indexArray, gl!.STATIC_DRAW);
+
+        const instBuf = gl!.createBuffer()!;
+        gl!.bindBuffer(gl!.ARRAY_BUFFER, instBuf);
+        gl!.bufferData(gl!.ARRAY_BUFFER, instData, gl!.STATIC_DRAW);
+        gl!.enableVertexAttribArray(1);
+        gl!.vertexAttribPointer(1, 4, gl!.FLOAT, false, 0, 0);
+        gl!.vertexAttribDivisor(1, 1);
+
+        colBuf = gl!.createBuffer()!;
+        gl!.bindBuffer(gl!.ARRAY_BUFFER, colBuf);
+        gl!.bufferData(gl!.ARRAY_BUFFER, colorBytes, gl!.DYNAMIC_DRAW);
+        gl!.enableVertexAttribArray(2);
+        gl!.vertexAttribPointer(2, 4, gl!.UNSIGNED_BYTE, true, 0, 0);
+        gl!.vertexAttribDivisor(2, 1);
+
+        gl!.enable(gl!.DEPTH_TEST);
+        gl!.enable(gl!.CULL_FACE);
+        gl!.cullFace(gl!.BACK);
+        gl!.clearColor(0, 0, 0, 0);
+      }
+
+      initGLResources();
 
       let isHeroVisible = true;
       let renderScheduled = false;
@@ -255,6 +370,10 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
       }
 
       function syncFullResOverlay() {
+        if (contextLost) {
+          setFullResVisible(true);
+          return;
+        }
         const isScrollComplete = currentR >= 0.985;
         // Crossfade into the full-res painting as the camera settles into the ordered grid
         const isCameraOrdered =
@@ -267,7 +386,7 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
 
       const renderOnce = () => {
         renderScheduled = false;
-        if (!isHeroVisible) return;
+        if (!isHeroVisible || contextLost) return;
 
         // Orthonormal camera basis for lookAt(0, 0, 0) with up = (0, 1, 0)
         const cx = camPos.x;
@@ -307,11 +426,25 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
       };
 
       const scheduleRender = () => {
-        if (!renderScheduled && isHeroVisible) {
+        if (!renderScheduled && isHeroVisible && !contextLost) {
           renderScheduled = true;
           requestAnimationFrame(renderOnce);
         }
       };
+
+      canvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault();
+        contextLost = true;
+        setFullResVisible(true);
+      });
+      canvas.addEventListener("webglcontextrestored", () => {
+        contextLost = false;
+        initGLResources();
+        lastCanvasW = 0;
+        lastCanvasH = 0;
+        resize();
+        updateCameraAndTitle();
+      });
 
       // Sample pixel colors from the preloaded 320x134 sunwards-eyes-grid.webp directly into the GPU buffer
       const img = new Image();
@@ -325,8 +458,11 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
         if (!ctx) return;
         ctx.drawImage(img, 0, 0, width, height, 0, 0, can.width, can.height);
         const { data } = ctx.getImageData(0, 0, can.width, can.height);
-        gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
+        colorBytes.set(data);
+        if (colBuf && !contextLost) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, colorBytes);
+        }
         scheduleRender();
       };
       img.src = imgUrl;
@@ -334,15 +470,27 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
       let cachedScrollSpan = 1;
       let cachedViewH = window.innerHeight;
       let cachedViewW = window.innerWidth;
+      let lastCanvasW = 0;
+      let lastCanvasH = 0;
+      let cachedPaintingPxH = 0;
+      let baseTitleTop = 0;
+      let titleH = 0;
 
       function resize() {
         const w = canvas!.clientWidth || window.innerWidth;
         const h = canvas!.clientHeight || window.innerHeight;
-        cachedViewW = window.innerWidth;
-        cachedViewH = window.innerHeight;
+
+        if (onPhone && Math.abs(w - lastCanvasW) < 1 && Math.abs(h - lastCanvasH) < 1) {
+          return;
+        }
+        lastCanvasW = w;
+        lastCanvasH = h;
+
+        cachedViewW = onPhone ? w : window.innerWidth;
+        cachedViewH = onPhone ? h : window.innerHeight;
         cachedScrollSpan = Math.max(1, runway!.offsetHeight - cachedViewH);
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = Math.min(window.devicePixelRatio || 1, onPhone ? 1.5 : 2);
         const pw = Math.round(w * dpr);
         const ph = Math.round(h * dpr);
         if (canvas!.width !== pw || canvas!.height !== ph) {
@@ -356,18 +504,34 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
         // Dynamically fit the assembled 320x134 canvas at z = targetCameraZ
         const gridW = nCol * instanceSize;
         const gridH = nRow * instanceSize;
-        const fitHeightForWidth = gridW / 0.92 / camAspect;
+        const widthMargin = onPhone && camAspect < 1 ? 0.94 : 0.92;
+        const fitHeightForWidth = gridW / widthMargin / camAspect;
         const fitHeightForHeight = gridH / 0.84;
         const visibleHeight = Math.max(fitHeightForWidth, fitHeightForHeight);
         const fovRad = 2 * Math.atan(visibleHeight / (2 * targetCameraZ));
         const fovDeg = (fovRad * 180) / Math.PI;
-        camFovDeg = Math.min(95, Math.max(28, fovDeg));
+        const maxFov = onPhone && camAspect < 1 ? 125 : 95;
+        camFovDeg = Math.min(maxFov, Math.max(28, fovDeg));
+
+        if (onPhone) {
+          initCameraZ = camAspect < 1 ? targetCameraZ / 3.4 : targetCameraZ / 5;
+          if (!reduced && currentR === 0) {
+            camPos.z = initCameraZ;
+          }
+        }
+
+        const actualVisH = 2 * targetCameraZ * Math.tan(((camFovDeg * Math.PI) / 180) * 0.5);
+        const pxH = (gridH / actualVisH) * h;
+        const pxW = (gridW / actualVisH) * h;
+        cachedPaintingPxH = pxH;
+
+        if (onPhone && titleEl) {
+          baseTitleTop = titleEl.offsetTop;
+          titleH = titleEl.offsetHeight;
+        }
 
         // Size the full-res overlay to match the exact projected bounding box at z = targetCameraZ
         if (fullImg) {
-          const actualVisH = 2 * targetCameraZ * Math.tan(((camFovDeg * Math.PI) / 180) * 0.5);
-          const pxH = (gridH / actualVisH) * h;
-          const pxW = (gridW / actualVisH) * h;
           fullImg.style.width = `${pxW}px`;
           fullImg.style.height = `${pxH}px`;
         }
@@ -378,7 +542,7 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
       window.addEventListener("resize", resize, { passive: true });
       resize();
 
-      // Reusable gsap.quickTo controllers eliminate per-event Tween allocations on pointermove & scroll
+      // Reusable gsap.quickTo controllers eliminate per-event Tween allocations on pointermove, gyro & scroll
       const camXTo = !reduced
         ? gsap.quickTo(camPos, "x", { duration: 0.8, ease: "power3.out", onUpdate: scheduleRender })
         : null;
@@ -393,14 +557,16 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
       const titleYTo =
         !reduced && titleEl ? gsap.quickTo(titleEl, "y", { duration: 0.8, ease: "power3.out" }) : null;
 
+      let syncPillVisibility = () => {};
+
       function updateCameraAndTitle() {
         const isComplete = currentR >= 0.985;
-        // Disable mouse parallax once the scroll buildup is complete (r >= 0.985),
-        // and smoothly scale mouse parallax by (1 - currentR) when scrolling back up.
-        const mouseFactor = isComplete || reduced ? 0 : 1 - currentR;
+        // Disable parallax once the scroll buildup is complete (r >= 0.985),
+        // and smoothly scale parallax by (1 - currentR) when scrolling back up.
+        const parallaxFactor = isComplete || reduced ? 0 : 1 - currentR;
 
-        const targetX = pointerX * maxMouseCamX * mouseFactor;
-        const targetY = pointerY * maxMouseCamY * mouseFactor;
+        const targetX = pointerX * maxCamX * parallaxFactor;
+        const targetY = pointerY * maxCamY * parallaxFactor;
         const targetZ = isComplete
           ? targetCameraZ
           : initCameraZ + (targetCameraZ - initCameraZ) * currentR;
@@ -411,38 +577,147 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
           camZTo?.(targetZ);
 
           if (titleXTo && titleYTo) {
-            // Rise from bottom to the upper inside of the hero painting as currentR goes 0 -> 1, then hold there
-            const scrollYShift = -currentR * cachedViewH * 0.65;
-            const mouseXShift = -pointerX * 10 * mouseFactor;
-            const mouseYShift = pointerY * 6 * mouseFactor;
-            titleXTo(mouseXShift);
-            titleYTo(scrollYShift + mouseYShift);
+            let scrollYShift = -currentR * cachedViewH * 0.65;
+            if (onPhone) {
+              const paintingTopY = (cachedViewH - cachedPaintingPxH) * 0.5;
+              const navSafeTop = 76;
+              const endTitleTop =
+                camAspect < 1
+                  ? Math.max(navSafeTop, paintingTopY - titleH - 22)
+                  : Math.max(navSafeTop, paintingTopY + 12);
+              const maxShiftY = Math.min(0, endTitleTop - baseTitleTop);
+              scrollYShift = currentR * maxShiftY;
+            }
+            const shiftX = -pointerX * 10 * parallaxFactor;
+            const shiftY = pointerY * 6 * parallaxFactor;
+            titleXTo(shiftX);
+            titleYTo(scrollYShift + shiftY);
           }
         }
 
+        syncPillVisibility();
         syncFullResOverlay();
       }
+
+      let syncDrift = () => {};
 
       function updateOnScroll() {
         if (!isHeroVisible) return;
         const raw = Math.min(1, Math.max(0, window.scrollY / cachedScrollSpan));
-        currentRaw = reduced ? 1 : raw;
-        // Complete particle buildup at 62% of the 185svh sticky runway (~115svh buildup),
-        // leaving ~70svh of hold (2 wheel movements shorter) before scrolling into Selected Works.
+        // Complete particle buildup at 62% of the sticky runway,
+        // leaving hold space before scrolling into Selected Works.
         currentR = reduced ? 1 : Math.min(1, raw / 0.62);
         updateCameraAndTitle();
+        syncDrift();
       }
 
       window.addEventListener(
         "pointermove",
         (e) => {
           if (reduced || !isHeroVisible) return;
+          if (onPhone && e.pointerType !== "mouse") return;
           pointerX = (e.clientX / cachedViewW - 0.5) * 2;
           pointerY = -(e.clientY / cachedViewH - 0.5) * 2;
           updateCameraAndTitle();
         },
         { passive: true }
       );
+
+      if (onPhone && !reduced) {
+        const motion = getMotionInput();
+        const DISMISS_KEY = "sunwards:tilt-dismissed";
+
+        const isDismissed = () => {
+          try {
+            return sessionStorage.getItem(DISMISS_KEY) === "1";
+          } catch {
+            return false;
+          }
+        };
+
+        syncPillVisibility = () => {
+          if (!gyroBar) return;
+          const show = motion.getState() === "needs-permission" && !isDismissed();
+          gyroBar.classList.toggle("hidden", !show);
+          gyroBar.classList.toggle("flex", show);
+          if (show) {
+            const faded = currentR > 0.75;
+            gyroBar.style.opacity = faded ? "0" : "1";
+            gyroBar.style.pointerEvents = faded ? "none" : "auto";
+          }
+        };
+
+        gyroEnableBtn?.addEventListener("click", () => {
+          void motion.requestPermission().then(() => {
+            syncPillVisibility();
+            syncDrift();
+          });
+        });
+
+        gyroDismissBtn?.addEventListener("click", () => {
+          try {
+            sessionStorage.setItem(DISMISS_KEY, "1");
+          } catch {}
+          syncPillVisibility();
+        });
+
+        motion.subscribe(({ x, y, active }) => {
+          if (!active || !isHeroVisible) return;
+          pointerX = x;
+          pointerY = y;
+          updateCameraAndTitle();
+        });
+
+        // Subtle ambient breathing drift while gyro is inactive/ungranted so the 3D field feels alive
+        let driftRafId = 0;
+        const driftStart = performance.now();
+
+        const stopDrift = () => {
+          if (driftRafId) {
+            cancelAnimationFrame(driftRafId);
+            driftRafId = 0;
+          }
+        };
+
+        const driftTick = (now: number) => {
+          driftRafId = 0;
+          if (
+            !isHeroVisible ||
+            document.hidden ||
+            currentR >= 0.96 ||
+            motion.getState() === "active"
+          ) {
+            return;
+          }
+          const t = (now - driftStart) * 0.001;
+          pointerX = Math.sin(t * 0.55) * 0.42;
+          pointerY = Math.cos(t * 0.4) * 0.32;
+          updateCameraAndTitle();
+          driftRafId = requestAnimationFrame(driftTick);
+        };
+
+        syncDrift = () => {
+          if (
+            isHeroVisible &&
+            !document.hidden &&
+            currentR < 0.96 &&
+            motion.getState() !== "active"
+          ) {
+            if (!driftRafId) driftRafId = requestAnimationFrame(driftTick);
+          } else {
+            stopDrift();
+          }
+        };
+
+        motion.onStateChange(() => {
+          syncPillVisibility();
+          syncDrift();
+        });
+        document.addEventListener("visibilitychange", syncDrift);
+
+        syncPillVisibility();
+        syncDrift();
+      }
 
       window.addEventListener("scroll", updateOnScroll, { passive: true });
       updateOnScroll();
@@ -454,6 +729,7 @@ const tickerText = "THE ART OF SUNWARDS × SELECTED WORKS × SCROLL TO ASSEMBLE 
           if (isHeroVisible) {
             scheduleRender();
           }
+          syncDrift();
         },
         { threshold: 0 }
       );

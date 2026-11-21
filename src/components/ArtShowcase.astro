@@ -34,14 +34,14 @@ const iconColumns = colStartOffsets.map((startY, c) => {
   <!-- Brutalist Section Header -->
   <header
     data-parallax-root
-    class="relative border-b-2 border-ink bg-paper px-5 pb-8 pt-14 md:px-10 md:pb-12 md:pt-20"
+    class="relative border-b-2 border-ink bg-paper px-5 pb-8 pt-14 max-sm:overflow-x-clip md:px-10 md:pb-12 md:pt-20"
   >
     <div class="mx-auto max-w-[1520px]">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-4 font-mono text-xs font-bold uppercase tracking-[0.2em]">
         <span class="text-accent">01 // WORKS</span>
-        <span class="text-ink/70">CLICK ANY PLATE TO INSPECT</span>
+        <span class="text-ink/70"><span class="non-phone-only">CLICK ANY PLATE TO INSPECT</span><span class="phone-only">TAP ANY PLATE TO INSPECT</span></span>
       </div>
-      <h2 class="font-display text-[length:clamp(3.1rem,10.5vw,10rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
+      <h2 class="font-display text-[length:clamp(3.1rem,10.5vw,10rem)] max-sm:text-[length:clamp(2.15rem,9.8vw,3.1rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
         Selected <span class="font-serif italic font-normal lowercase text-accent">works</span>
       </h2>
     </div>
@@ -155,11 +155,15 @@ const iconColumns = colStartOffsets.map((startY, c) => {
   <!-- Scroll-locked centered frame animation after the last image -->
   <div
     id="eye-anim-runway"
-    class="relative h-[350svh] bg-ink text-paper"
+    class="relative h-[235svh] sm:h-[350svh] bg-ink text-paper"
     data-strip-src="/art/gif/eye-strip.webp"
     data-frames="34"
+    data-cols="6"
   >
-    <div class="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden px-5 md:px-10">
+    <div
+      data-eye-sticky
+      class="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden px-5 md:px-10"
+    >
       <!-- Scrolling organic field of eye (visibility) and sun (wb_sunny) icons while eye animation plays -->
       <div
         aria-hidden="true"
@@ -169,11 +173,14 @@ const iconColumns = colStartOffsets.map((startY, c) => {
           id="eye-sun-pattern"
           class="absolute left-1/2 top-0 flex -translate-x-1/2 items-start gap-8 md:gap-14"
         >
-          {iconColumns.map((col) => (
+          {iconColumns.map((col, idx) => (
             <div
               data-icon-col
               data-speed={col.speed}
-              class="flex w-[140px] flex-col items-center will-change-transform md:w-[165px]"
+              class:list={[
+                "w-[140px] flex-col items-center will-change-transform md:w-[165px]",
+                idx < 3 || idx > 7 ? "hidden sm:flex" : "flex",
+              ]}
               style={`padding-top:${col.startY}px`}
             >
               {col.items.map((item) => (
@@ -246,7 +253,7 @@ const iconColumns = colStartOffsets.map((startY, c) => {
 
               <div class="flex flex-wrap items-baseline justify-between gap-2 border-t-2 border-paper/80 bg-ink px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-paper md:text-[11px]">
                 <span class="font-bold text-paper">Blink Study</span>
-                <span class="text-paper/65">2026 · Wheel-Driven Sequence</span>
+                <span class="text-paper/65"><span class="non-phone-only">2026 · Wheel-Driven Sequence</span><span class="phone-only">2026 · Scroll-Driven Sequence</span></span>
               </div>
             </button>
           </div>
@@ -299,16 +306,27 @@ const iconColumns = colStartOffsets.map((startY, c) => {
     -webkit-font-smoothing: antialiased;
     font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 48;
   }
+  @media (max-width: 639px), ((pointer: coarse) and (max-height: 500px)) {
+    .tilt-card:active {
+      scale: 0.985;
+    }
+    #eye-anim-runway {
+      height: 235svh;
+    }
+  }
 </style>
 
 <script>
   /**
    * Global 3D Card Tilt + Radial Glow (adapted from https://codepen.io/markmiro/pen/wbqMPa)
-   * Inverted tilt axis; all on-screen cards react simultaneously to cursor movement anywhere on screen.
-   * Optimized with two-phase read/write separation and cached bounding rects so mousemove performs zero layout reads.
+   * Desktop/tablet: inverted tilt axis reacting to cursor movement anywhere on screen.
+   * Phone: gyroscope tilt + subtle specular sheen across visible plates (with scroll-tilt fallback).
    */
+  import { getMotionInput, isPhoneViewport } from "../lib/motionInput";
+
   const canHover = matchMedia("(hover: hover) and (pointer: fine)").matches;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const onPhone = isPhoneViewport();
 
   if (canHover && !reduced) {
     const cardEls = Array.from(document.querySelectorAll<HTMLElement>("[data-tilt-card]"));
@@ -444,7 +462,7 @@ const iconColumns = colStartOffsets.map((startY, c) => {
       { passive: true }
     );
 
-    document.addEventListener(
+      document.addEventListener(
       "mouseleave",
       () => {
         hasPointer = false;
@@ -453,6 +471,85 @@ const iconColumns = colStartOffsets.map((startY, c) => {
           if (glow) {
             glow.style.backgroundImage = "";
           }
+        }
+      },
+      { passive: true }
+    );
+  } else if (onPhone && !reduced) {
+    const motion = getMotionInput();
+    const phoneCards = Array.from(document.querySelectorAll<HTMLElement>("[data-tilt-card]")).map(
+      (card, idx) => ({
+        card,
+        anchor: card.parentElement ?? card,
+        glow: card.querySelector<HTMLElement>("[data-tilt-glow]"),
+        mult: 1 + ((idx % 3) - 1) * 0.12,
+        ny: 0,
+      })
+    );
+
+    const phoneCardMap = new Map(phoneCards.map((item) => [item.card, item]));
+    const visiblePhoneCards = new Set<(typeof phoneCards)[number]>();
+
+    const phoneIo = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const item = phoneCardMap.get(entry.target as HTMLElement);
+          if (!item) continue;
+          if (entry.isIntersecting) {
+            item.card.classList.add("is-visible");
+            visiblePhoneCards.add(item);
+          } else {
+            item.card.classList.remove("is-visible");
+            item.card.style.transform = "";
+            if (item.glow) item.glow.style.backgroundImage = "";
+            visiblePhoneCards.delete(item);
+          }
+        }
+      },
+      { rootMargin: "100px" }
+    );
+
+    phoneCards.forEach(({ card }) => phoneIo.observe(card));
+
+    motion.subscribe(({ x, y, active }) => {
+      if (!active || visiblePhoneCards.size === 0) return;
+      const mag = Math.min(1, Math.hypot(x, y));
+      const gx = (50 + x * 42).toFixed(1);
+      const gy = (50 + y * 42).toFixed(1);
+      for (const { card, glow, mult } of visiblePhoneCards) {
+        const rx = (-y * 8.5 * mult).toFixed(2);
+        const ry = (x * 8.5 * mult).toFixed(2);
+        card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+        if (glow) {
+          if (mag > 0.04) {
+            glow.style.backgroundImage = `radial-gradient(circle at ${gx}% ${gy}%, rgba(255,255,255,${(mag * 0.3).toFixed(3)}), rgba(0,0,0,${(mag * 0.06).toFixed(3)}) 70%)`;
+          } else if (glow.style.backgroundImage) {
+            glow.style.backgroundImage = "";
+          }
+        }
+      }
+    });
+
+    // Subtle scroll-position tilt fallback when gyroscope is inactive/ungranted
+    let scrollTiltRaf = 0;
+    const updateScrollTilt = () => {
+      scrollTiltRaf = 0;
+      if (motion.getState() === "active" || visiblePhoneCards.size === 0) return;
+      const vh = window.innerHeight || 1;
+      for (const item of visiblePhoneCards) {
+        const b = item.anchor.getBoundingClientRect();
+        item.ny = Math.max(-1, Math.min(1, (b.top + b.height * 0.5 - vh * 0.5) / (vh * 0.5)));
+      }
+      for (const item of visiblePhoneCards) {
+        item.card.style.transform = `rotateX(${(item.ny * 4.5).toFixed(2)}deg)`;
+      }
+    };
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (motion.getState() !== "active" && visiblePhoneCards.size > 0 && !scrollTiltRaf) {
+          scrollTiltRaf = requestAnimationFrame(updateScrollTilt);
         }
       },
       { passive: true }
@@ -466,6 +563,7 @@ const iconColumns = colStartOffsets.map((startY, c) => {
    * - Lazy-loads eye-strip.webp ahead of viewport arrival and caches runway offsets to avoid layout queries on scroll
    */
   const eyeRunway = document.getElementById("eye-anim-runway");
+  const eyeSticky = eyeRunway?.querySelector<HTMLElement>("[data-eye-sticky]") ?? null;
   const eyeCanvas = document.getElementById("eye-anim-canvas") as HTMLCanvasElement | null;
   const eyeStatus = document.getElementById("eye-anim-status");
   const eyeBar = document.getElementById("eye-anim-bar");
@@ -480,6 +578,7 @@ const iconColumns = colStartOffsets.map((startY, c) => {
     const ctx = eyeCanvas.getContext("2d", { alpha: false });
     const stripSrc = eyeRunway.dataset.stripSrc || "/art/gif/eye-strip.webp";
     const totalFrames = parseInt(eyeRunway.dataset.frames || "34", 10);
+    const stripCols = Math.max(1, parseInt(eyeRunway.dataset.cols || "1", 10));
     const frameW = 480;
     const frameH = 480;
 
@@ -494,11 +593,13 @@ const iconColumns = colStartOffsets.map((startY, c) => {
     let runwayTop = 0;
     let lockSpan = 1;
     let eyeRafId = 0;
+    let gyroX = 0;
 
     function measureRunway() {
       const rect = eyeRunway!.getBoundingClientRect();
       runwayTop = rect.top + window.scrollY;
-      lockSpan = Math.max(1, eyeRunway!.offsetHeight - window.innerHeight);
+      const viewH = onPhone && eyeSticky ? eyeSticky.offsetHeight || window.innerHeight : window.innerHeight;
+      lockSpan = Math.max(1, eyeRunway!.offsetHeight - viewH);
     }
 
     function loadStrip() {
@@ -518,10 +619,12 @@ const iconColumns = colStartOffsets.map((startY, c) => {
       if (clamped === currentFrame) return;
       currentFrame = clamped;
 
+      const col = clamped % stripCols;
+      const row = Math.floor(clamped / stripCols);
       ctx.drawImage(
         stripImg,
-        0,
-        clamped * frameH,
+        col * frameW,
+        row * frameH,
         frameW,
         frameH,
         0,
@@ -571,7 +674,12 @@ const iconColumns = colStartOffsets.map((startY, c) => {
         for (let i = 0; i < iconColEls.length; i++) {
           const { el, speed } = iconColEls[i];
           const shiftY = activeScroll * speed;
-          el.style.transform = `translate3d(0, ${-shiftY.toFixed(1)}px, 0)`;
+          if (onPhone) {
+            const shiftX = gyroX * speed * 24;
+            el.style.transform = `translate3d(${shiftX.toFixed(1)}px, ${-shiftY.toFixed(1)}px, 0)`;
+          } else {
+            el.style.transform = `translate3d(0, ${-shiftY.toFixed(1)}px, 0)`;
+          }
         }
       }
 
@@ -621,6 +729,14 @@ const iconColumns = colStartOffsets.map((startY, c) => {
       { rootMargin: "200px" }
     );
     activeIo.observe(eyeRunway);
+
+    if (onPhone && !reduced) {
+      getMotionInput().subscribe(({ x, active }) => {
+        if (!active) return;
+        gyroX = x;
+        if (isRunwayNear) scheduleEyeUpdate();
+      });
+    }
 
     window.addEventListener("scroll", scheduleEyeUpdate, { passive: true });
     window.addEventListener(

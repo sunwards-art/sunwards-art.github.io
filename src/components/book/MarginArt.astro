@@ -1,0 +1,87 @@
+---
+interface Props {
+  src: string;
+  caption?: string;
+  align?: "right" | "left";
+  plate?: string;
+}
+
+const { src, caption, align = "right", plate } = Astro.props;
+---
+
+<aside
+  class:list={[
+    "book-margin-art relative my-10 lg:my-0",
+    align === "left" ? "book-margin-art--left" : "book-margin-art--right",
+  ]}
+  data-margin-art
+  data-align={align}
+>
+  <figure class="book-margin-figure mx-auto max-w-md lg:mx-0 lg:max-w-none">
+    <div
+      class="relative overflow-hidden border p-1.5 transition-colors duration-700"
+      style="border-color: var(--book-rule); background: var(--book-surface);"
+    >
+      <img
+        src={src}
+        alt={caption ?? "Marginalia illustration"}
+        loading="lazy"
+        decoding="async"
+        class="block h-auto w-full object-cover"
+      />
+    </div>
+
+    {(caption || plate) && (
+      <figcaption
+        class="mt-2.5 flex flex-col gap-0.5 font-mono text-[11px] leading-relaxed tracking-[0.06em]"
+        style="color: var(--book-muted);"
+      >
+        {plate && (
+          <span class="text-[9.5px] uppercase tracking-[0.22em] opacity-75">
+            {plate}
+          </span>
+        )}
+        {caption && <span>{caption}</span>}
+      </figcaption>
+    )}
+  </figure>
+</aside>
+
+<style>
+  @media (min-width: 1024px) {
+    .book-margin-art {
+      height: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .book-margin-figure {
+      pointer-events: auto;
+      width: clamp(195px, 21vw, 310px);
+    }
+
+    .book-margin-art--left .book-margin-figure {
+      position: absolute;
+      right: calc(100% + 3.5rem);
+      top: -1rem;
+      text-align: right;
+    }
+
+    .book-margin-art--right .book-margin-figure {
+      position: absolute;
+      left: calc(100% + 3.5rem);
+      top: -1rem;
+      text-align: left;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .book-margin-art--left .book-margin-figure {
+      right: calc(100% + 4.75rem);
+    }
+
+    .book-margin-art--right .book-margin-figure {
+      left: calc(100% + 4.75rem);
+    }
+  }
+</style>

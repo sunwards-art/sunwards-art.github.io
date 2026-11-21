@@ -1,0 +1,24 @@
+---
+interface Props {
+  theme: "bone" | "dusk" | "ash" | "void";
+  label?: string;
+}
+
+const { theme, label } = Astro.props;
+---
+
+<div
+  class="book-mood-shift pointer-events-none relative my-14 py-3 w-full select-none flex items-center justify-center"
+  data-mood-shift={theme}
+  aria-hidden="true"
+>
+  <span
+    class="block h-px w-12 opacity-20"
+    style="background-color: var(--book-ink);"
+  />
+  {label && (
+    <span class="hidden lg:block absolute -left-48 top-1/2 -translate-y-1/2 w-40 text-right font-mono text-[10px] uppercase tracking-[0.22em] opacity-35">
+      // {label}
+    </span>
+  )}
+</div>

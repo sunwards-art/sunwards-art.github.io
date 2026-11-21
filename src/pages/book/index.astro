@@ -1,0 +1,382 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+
+const rawChapters = await getCollection("book", ({ data }) => !data.draft);
+const chapters = rawChapters.sort((a, b) => a.data.chapter - b.data.chapter);
+const firstChapter = chapters[0];
+---
+
+<Layout
+  title="Symphony of a Withered World — An Interactive Web Book"
+  description="A quiet, atmospheric web-book about Death and the last girl on Earth."
+  theme="bone"
+  preloadHero={false}
+>
+  <!-- Ambient Dust/Ash Canvas Layer -->
+  <canvas
+    id="book-dust-canvas"
+    class="pointer-events-none fixed inset-0 z-10 h-full w-full opacity-55 transition-opacity duration-1000"
+    aria-hidden="true"
+  ></canvas>
+
+  <!-- Minimal Editorial Top Bar -->
+  <header
+    class="relative z-30 mx-auto flex max-w-[1440px] items-center justify-between border-b px-6 py-5 md:px-12"
+    style="border-color: var(--book-rule);"
+  >
+    <a
+      href="/#projects"
+      class="group inline-flex items-center gap-2.5 font-mono text-xs uppercase tracking-[0.2em] transition-opacity hover:opacity-70"
+      style="color: var(--book-ink);"
+    >
+      <span class="inline-block transition-transform group-hover:-translate-x-1">←</span>
+      <span>Return to Archive</span>
+    </a>
+
+    <div class="hidden items-center gap-6 font-mono text-[11px] uppercase tracking-[0.22em] sm:flex" style="color: var(--book-muted);">
+      <span>BY SHANTI CISNEROS</span>
+      <span>·</span>
+      <span>SUNWARDS PRESS</span>
+    </div>
+
+    <!-- Theme Preview Switcher -->
+    <div class="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em]">
+      <span class="mr-1.5 hidden md:inline" style="color: var(--book-muted);">ATMOSPHERE:</span>
+      {(["bone", "dusk", "ash", "void"] as const).map((t) => (
+        <button
+          type="button"
+          data-set-theme={t}
+          class="cursor-pointer border px-2 py-1 transition-all hover:opacity-100"
+          style="border-color: var(--book-rule); color: var(--book-ink);"
+          aria-label={`Preview ${t} theme`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  </header>
+
+  <main class="relative z-20 mx-auto max-w-[1440px] px-6 pb-32 pt-12 md:px-12 md:pt-20">
+    <!-- Editorial Book Cover Spread -->
+    <section class="grid grid-cols-1 items-start gap-12 border-b pb-20 lg:grid-cols-12 lg:gap-16 lg:pb-28" style="border-color: var(--book-rule);">
+      <!-- Left Column: Cover Art Plate -->
+      <div class="lg:col-span-5">
+        <div
+          class="relative mx-auto max-w-md border p-3 sm:p-4 lg:mx-0 lg:max-w-none"
+          style="border-color: var(--book-rule); background: var(--book-surface);"
+        >
+          <div class="relative aspect-[3/4] w-full overflow-hidden border" style="border-color: var(--book-rule);">
+            <img
+              src="/art/showcase/empire-girl.webp"
+              alt="Symphony of a Withered World Cover Plate"
+              class="h-full w-full object-cover transition-transform duration-1000 hover:scale-[1.02]"
+            />
+            <div
+              class="pointer-events-none absolute inset-0"
+              style="background: linear-gradient(to top, rgba(16,16,14,0.68) 0%, transparent 45%);"
+            ></div>
+            <div class="absolute inset-x-4 bottom-4 flex items-end justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-[#F4F1EA]/85">
+              <span>FOLIO NO. 07</span>
+              <span>PLATE I // THE LUTHIER</span>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.18em]" style="color: var(--book-muted);">
+            <span>ILLUS. BY SUNWARDS</span>
+            <span>4 ATMOSPHERIC MOVEMENTS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Title, Synopsis, Actions -->
+      <div class="flex flex-col justify-between lg:col-span-7 lg:pt-4">
+        <div>
+          <div class="mb-5 flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-[0.24em]" style="color: var(--book-muted);">
+            <span>BY SHANTI CISNEROS</span>
+            <span>//</span>
+            <span>DEATH &amp; THE LAST GIRL ON EARTH</span>
+          </div>
+
+          <h1
+            class="mb-6 font-normal leading-[0.98] tracking-[-0.025em]"
+            style="font-family: 'Newsreader', Georgia, serif; font-size: clamp(2.85rem, 6.2vw, 5.6rem);"
+          >
+            Symphony of<br />
+            <span class="italic font-light">a Withered World</span>
+          </h1>
+
+          <blockquote
+            class="mb-8 border-l pl-5 italic"
+            style="border-color: var(--book-ink); font-family: 'Newsreader', Georgia, serif; font-size: clamp(1.15rem, 1.6vw, 1.4rem); color: var(--book-muted);"
+          >
+            “When oceans were dry and mountains laid flat and the trees were as hard as stone; when the gods had been gone and their essence was lost—Death surprised herself being bored.”
+          </blockquote>
+
+          <div
+            class="space-y-5 text-base leading-[1.82] md:text-lg"
+            style="font-family: 'Newsreader', Georgia, serif; max-width: 62ch;"
+          >
+            <p>
+              In the dying world of Atorus, beneath a bleeding, eclipsed Sun, Death wanders empty ruins with a pair of golden scissors and a silent bell—until she rescues a small black cat and makes a promise to a dying father.
+            </p>
+            <p>
+              Together with Elana, the last girl on Earth, and Ruppert, the last cat, she journeys north across red deserts, ghost-filled mists, and fallen cities toward the City of Gods—discovering what it truly means to live for the little things.
+            </p>
+          </div>
+        </div>
+
+        <!-- Primary Reading Actions + Dynamic localStorage Resume Button -->
+        <div class="mt-10 flex flex-col gap-4 pt-6 sm:flex-row sm:items-center" style="border-top: 1px solid var(--book-rule);">
+          {firstChapter && (
+            <a
+              href={`/book/${firstChapter.id}`}
+              class="inline-flex items-center justify-center gap-3 border px-7 py-4 font-mono text-xs font-bold uppercase tracking-[0.22em] transition-all hover:opacity-85"
+              style="background-color: var(--book-ink); color: var(--book-bg); border-color: var(--book-ink);"
+            >
+              <span>Begin Reading — Ch. I</span>
+              <span>→</span>
+            </a>
+          )}
+
+          <!-- Dynamic Resume Reading Button (hydrated via localStorage) -->
+          <a
+            id="book-resume-btn"
+            href={firstChapter ? `/book/${firstChapter.id}` : "/book"}
+            class="hidden items-center justify-center gap-3 border px-6 py-4 font-mono text-xs uppercase tracking-[0.2em] transition-all hover:opacity-80"
+            style="border-color: var(--book-ink); color: var(--book-ink); background: var(--book-surface);"
+          >
+            <span class="inline-block h-2 w-2 rounded-full" style="background-color: var(--book-accent);"></span>
+            <span id="book-resume-label">Resume Reading</span>
+          </a>
+        </div>
+
+        <p id="book-resume-meta" class="mt-3 hidden font-mono text-[11px] uppercase tracking-[0.18em]" style="color: var(--book-muted);"></p>
+      </div>
+    </section>
+
+    <!-- Table of Contents -->
+    <section class="mx-auto mt-20 max-w-4xl">
+      <div class="mb-10 flex items-baseline justify-between border-b pb-4" style="border-color: var(--book-rule);">
+        <div>
+          <span class="block font-mono text-[11px] uppercase tracking-[0.24em]" style="color: var(--book-muted);">
+            INDEX OF MOVEMENTS
+          </span>
+          <h2 class="mt-1 text-2xl italic font-normal md:text-3xl" style="font-family: 'Newsreader', Georgia, serif;">
+            Table of Contents
+          </h2>
+        </div>
+        <span class="font-mono text-xs uppercase tracking-[0.2em]" style="color: var(--book-muted);">
+          {chapters.length} {chapters.length === 1 ? "CHAPTER" : "CHAPTERS"} AVAILABLE
+        </span>
+      </div>
+
+      <ol class="divide-y" style="border-color: var(--book-rule);">
+        {chapters.map((entry) => (
+          <li class="group py-7 transition-colors" style="border-color: var(--book-rule);">
+            <a
+              href={`/book/${entry.id}`}
+              class="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-baseline"
+              data-toc-slug={entry.id}
+            >
+              <div class="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em] md:col-span-3" style="color: var(--book-muted);">
+                <span>CH. {String(entry.data.chapter).padStart(2, "0")}</span>
+                {entry.data.roman && <span>// {entry.data.roman}</span>}
+              </div>
+
+              <div class="md:col-span-7">
+                <h3
+                  class="text-2xl font-normal tracking-[-0.01em] transition-transform duration-300 group-hover:translate-x-1.5 md:text-3xl"
+                  style="font-family: 'Newsreader', Georgia, serif;"
+                >
+                  {entry.data.title}
+                </h3>
+                {entry.data.subtitle && (
+                  <p
+                    class="mt-1 italic text-base"
+                    style="font-family: 'Newsreader', Georgia, serif; color: var(--book-muted);"
+                  >
+                    {entry.data.subtitle}
+                  </p>
+                )}
+                <p
+                  class="mt-2.5 text-sm leading-relaxed"
+                  style="font-family: 'Newsreader', Georgia, serif; color: var(--book-ink); opacity: 0.85;"
+                >
+                  {entry.data.synopsis}
+                </p>
+              </div>
+
+              <div class="flex items-center justify-between md:col-span-2 md:flex-col md:items-end md:justify-start gap-2 font-mono text-[11px] uppercase tracking-[0.2em]" style="color: var(--book-muted);">
+                <span>{entry.data.readingTime ?? "5 MIN"}</span>
+                <span
+                  class="inline-flex items-center gap-1 border px-2 py-0.5 text-[10px] transition-colors"
+                  style="border-color: var(--book-rule); color: var(--book-ink);"
+                  data-toc-progress={entry.id}
+                >
+                  READ →
+                </span>
+              </div>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  </main>
+
+  <!-- Quiet Mode Floating Toggle -->
+  <button
+    id="book-quiet-toggle"
+    type="button"
+    class="fixed bottom-6 right-6 z-50 flex cursor-pointer items-center gap-2.5 border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.2em] backdrop-blur-sm transition-all hover:opacity-100"
+    style="background-color: var(--book-bg); color: var(--book-ink); border-color: var(--book-rule); opacity: 0.85;"
+    aria-pressed="false"
+    title="Toggle ambient particles and scroll animations"
+  >
+    <span id="book-quiet-dot" class="h-1.5 w-1.5 rounded-full" style="background-color: var(--book-accent);"></span>
+    <span id="book-quiet-text">QUIET MODE: OFF</span>
+  </button>
+
+  <script>
+    const BOOKMARK_KEY = "symphony-withered-world:bookmark";
+    const QUIET_KEY = "symphony-withered-world:quiet";
+
+    // 1. Hydrate Resume Reading Button & TOC Badges from localStorage
+    try {
+      const raw = localStorage.getItem(BOOKMARK_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as {
+          slug?: string;
+          title?: string;
+          chapter?: number;
+          scrollPercent?: number;
+          updatedAt?: number;
+        };
+
+        if (saved && saved.slug) {
+          const resumeBtn = document.getElementById("book-resume-btn") as HTMLAnchorElement | null;
+          const resumeLabel = document.getElementById("book-resume-label");
+          const resumeMeta = document.getElementById("book-resume-meta");
+          const pct = Math.min(100, Math.max(0, Math.round((saved.scrollPercent ?? 0) * 100)));
+
+          if (resumeBtn && resumeLabel) {
+            resumeBtn.href = `/book/${saved.slug}${pct > 2 ? `?resume=${pct}` : ""}`;
+            resumeBtn.classList.remove("hidden");
+            resumeBtn.classList.add("inline-flex");
+            const chNum = saved.chapter ? `Ch. ${saved.chapter}` : saved.title ?? "Chapter";
+            resumeLabel.textContent = `Resume ${chNum} (${pct}%)`;
+          }
+
+          if (resumeMeta && saved.title) {
+            resumeMeta.textContent = `LAST BOOKMARKED: "${saved.title.toUpperCase()}" · ${pct}% COMPLETED`;
+            resumeMeta.classList.remove("hidden");
+          }
+
+          const badge = document.querySelector<HTMLElement>(`[data-toc-progress="${saved.slug}"]`);
+          if (badge) {
+            badge.textContent = pct >= 95 ? "COMPLETED ✓" : `IN PROGRESS · ${pct}%`;
+          }
+        }
+      }
+    } catch {
+      // Ignore storage access errors in private browsing
+    }
+
+    // 2. Theme Preview Switcher on the Cover Page
+    document.querySelectorAll<HTMLButtonElement>("[data-set-theme]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetTheme = btn.dataset.setTheme;
+        if (targetTheme) {
+          document.body.dataset.theme = targetTheme;
+        }
+      });
+    });
+
+    // 3. Quiet Mode Toggle (persisted in localStorage)
+    const quietBtn = document.getElementById("book-quiet-toggle");
+    const quietText = document.getElementById("book-quiet-text");
+    const quietDot = document.getElementById("book-quiet-dot");
+
+    function applyQuietState(isQuiet: boolean) {
+      document.body.dataset.quiet = isQuiet ? "true" : "false";
+      document.documentElement.classList.toggle("quiet-mode", isQuiet);
+      if (quietBtn) quietBtn.setAttribute("aria-pressed", String(isQuiet));
+      if (quietText) quietText.textContent = isQuiet ? "QUIET MODE: ON" : "QUIET MODE: OFF";
+      if (quietDot) {
+        quietDot.style.opacity = isQuiet ? "0.3" : "1";
+      }
+    }
+
+    let isQuiet = false;
+    try {
+      isQuiet = localStorage.getItem(QUIET_KEY) === "true";
+    } catch {}
+    applyQuietState(isQuiet);
+
+    quietBtn?.addEventListener("click", () => {
+      isQuiet = !isQuiet;
+      try {
+        localStorage.setItem(QUIET_KEY, String(isQuiet));
+      } catch {}
+      applyQuietState(isQuiet);
+    });
+
+    // 4. Subtle Ambient Dust/Ash Canvas (respects prefers-reduced-motion & Quiet Mode)
+    const canvas = document.getElementById("book-dust-canvas") as HTMLCanvasElement | null;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (canvas && !reducedMotion) {
+      const ctx = canvas.getContext("2d");
+      let width = (canvas.width = window.innerWidth);
+      let height = (canvas.height = window.innerHeight);
+
+      window.addEventListener(
+        "resize",
+        () => {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+        },
+        { passive: true }
+      );
+
+      const moteCount = 34;
+      const motes = Array.from({ length: moteCount }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 1.6 + 0.5,
+        vx: (Math.random() - 0.5) * 0.16,
+        vy: -Math.random() * 0.22 - 0.04,
+        alpha: Math.random() * 0.35 + 0.1,
+      }));
+
+      function drawMotes() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, width, height);
+        if (document.body.dataset.quiet === "true") {
+          requestAnimationFrame(drawMotes);
+          return;
+        }
+
+        const theme = document.body.dataset.theme || "bone";
+        const isDark = theme === "ash" || theme === "void";
+        const rgb = isDark ? "236, 234, 228" : "28, 25, 23";
+
+        for (const m of motes) {
+          m.x += m.vx;
+          m.y += m.vy;
+          if (m.y < -10) m.y = height + 10;
+          if (m.x < -10) m.x = width + 10;
+          if (m.x > width + 10) m.x = -10;
+
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${rgb}, ${m.alpha})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(drawMotes);
+      }
+
+      requestAnimationFrame(drawMotes);
+    }
+  </script>
+</Layout>

@@ -75,3 +75,839 @@ html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 .lenis.lenis-stopped { overflow: hidden; }
+
+/* ---------- Phone-only utility visibility (never matches PC or tablets >= 640px / height > 500px) ---------- */
+.phone-only { display: none; }
+@media (max-width: 639px), ((pointer: coarse) and (max-height: 500px)) {
+  html { overflow-x: clip; }
+  .phone-only { display: inline; }
+  .non-phone-only { display: none; }
+  a, button { -webkit-tap-highlight-color: transparent; }
+}
+
+/* ==========================================================================
+   SYMPHONY OF A WITHERED WORLD — EDITORIAL WEB-BOOK SYSTEM (/book)
+   ========================================================================== */
+
+body[data-theme] {
+  --book-bg: #F4F1EA;
+  --book-ink: #161614;
+  --book-muted: #6E6B63;
+  --book-rule: rgba(22, 22, 20, 0.14);
+  --book-surface: rgba(22, 22, 20, 0.04);
+  --book-accent: #8C3B2B;
+  --book-key: #E05A3F;
+  --book-chime: #8F7434;
+  --book-hl-bg: #111110;
+  --book-hl-fg: #FAF9F6;
+  --book-death-glow: rgba(22, 22, 20, 0.08);
+  background-color: var(--book-bg);
+  color: var(--book-ink);
+  transition:
+    background-color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Keep death-voice & margin-art borders in sync without running per-paragraph color transitions */
+:where(body[data-theme]) :where(.book-death-voice, .book-margin-figure) {
+  transition:
+    border-color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Keep sticky header links & buttons locked in color sync + smooth auto-hide */
+body[data-theme] .book-reader-header {
+  transition:
+    color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+body[data-theme] .book-reader-header.is-hidden:not(:hover):not(:focus-within) {
+  transform: translateY(-100%);
+}
+body[data-theme] .book-reader-header a,
+body[data-theme] .book-reader-header span,
+body[data-theme] .book-reader-header button {
+  transition:
+    color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+body[data-theme="bone"] {
+  --book-bg: #F4F1EA;
+  --book-ink: #161614;
+  --book-muted: #6E6B63;
+  --book-rule: rgba(22, 22, 20, 0.14);
+  --book-surface: rgba(22, 22, 20, 0.04);
+  --book-accent: #9E3E26;
+  --book-chime: #8F7434;
+  --book-hl-bg: #111110;
+  --book-hl-fg: #FAF9F6;
+  --book-death-glow: rgba(22, 22, 20, 0.08);
+}
+
+body[data-theme="dusk"] {
+  --book-bg: #DCE0E6;
+  --book-ink: #17191C;
+  --book-muted: #5C626B;
+  --book-rule: rgba(23, 25, 28, 0.14);
+  --book-surface: rgba(23, 25, 28, 0.04);
+  --book-accent: #8F3923;
+  --book-chime: #7E662E;
+  --book-hl-bg: #111110;
+  --book-hl-fg: #FAF9F6;
+  --book-death-glow: rgba(23, 25, 28, 0.09);
+}
+
+/* Lower the paper grain noise on book pages for a cleaner, quieter reading surface */
+body[data-theme]::after {
+  opacity: 0.22;
+}
+
+body[data-theme="ash"] {
+  --book-bg: #2A2B2A;
+  --book-ink: #E4E2DD;
+  --book-muted: #9A9891;
+  --book-rule: rgba(228, 226, 221, 0.15);
+  --book-surface: rgba(228, 226, 221, 0.05);
+  --book-accent: #D6895A;
+  --book-chime: #C9A959;
+  --book-hl-bg: #F5F4F0;
+  --book-hl-fg: #10100E;
+  --book-death-glow: rgba(228, 226, 221, 0.1);
+}
+
+body[data-theme="void"] {
+  --book-bg: #10100E;
+  --book-ink: #ECEAE4;
+  --book-muted: #787670;
+  --book-rule: rgba(236, 234, 228, 0.14);
+  --book-surface: rgba(236, 234, 228, 0.04);
+  --book-accent: #E29B6B;
+  --book-chime: #D5B76A;
+  --book-hl-bg: #F5F4F0;
+  --book-hl-fg: #10100E;
+  --book-death-glow: rgba(236, 234, 228, 0.14);
+}
+
+body[data-theme] ::selection {
+  background: var(--book-ink);
+  color: var(--book-bg);
+}
+
+/* Sacred 3-Column Asymmetric Editorial Grid on Desktop */
+.book-editorial-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .book-editorial-grid {
+    grid-template-columns: 1fr minmax(auto, 61ch) 1fr;
+    column-gap: 3.5rem;
+    padding-inline: 3rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .book-editorial-grid {
+    column-gap: 4.75rem;
+    padding-inline: 4rem;
+  }
+}
+
+/* Center reading column */
+.book-prose {
+  grid-column: 1;
+  font-family: "Newsreader", "Instrument Serif", Georgia, serif;
+  font-size: calc(clamp(1.14rem, 0.35vw + 1.05rem, 1.32rem) * var(--book-font-scale, 1));
+  line-height: 1.82;
+  letter-spacing: -0.004em;
+  color: var(--book-ink);
+  font-feature-settings: "liga" 1, "onum" 1, "kern" 1;
+}
+
+@media (min-width: 1024px) {
+  .book-prose {
+    grid-column: 2;
+  }
+}
+
+.book-prose > p {
+  margin-bottom: 1.65em;
+  text-wrap: pretty;
+}
+
+/* Drop cap on the first paragraph of a chapter */
+.book-prose > p:first-of-type::first-letter {
+  float: left;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 3.85em;
+  line-height: 0.82;
+  padding-right: 0.12em;
+  padding-top: 0.06em;
+  font-weight: 400;
+  color: var(--book-ink);
+}
+
+.book-prose h2,
+.book-prose h3 {
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  margin-top: 2.8em;
+  margin-bottom: 1em;
+  color: var(--book-ink);
+}
+
+.book-prose h2 {
+  position: relative;
+  font-size: 1.72em;
+  padding-bottom: 0.45em;
+}
+
+.book-prose h2[data-eyebrow]::before {
+  content: attr(data-eyebrow);
+  display: block;
+  margin-bottom: 0.45rem;
+  font-family: "Space Mono", monospace;
+  font-style: normal;
+  font-size: 0.65rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--book-muted);
+}
+
+.book-prose h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3.5rem;
+  height: 1px;
+  background: var(--book-rule);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), background-color 1.2s ease;
+}
+
+.book-prose h2.is-awake::after,
+html.quiet-mode .book-prose h2::after,
+html:not(.book-motion-ready) .book-prose h2::after {
+  transform: scaleX(1);
+}
+
+.book-prose h3 {
+  font-size: 1.3em;
+}
+
+.book-prose blockquote {
+  margin: 2.2em 0;
+  padding-left: 1.35em;
+  border-left: 1px solid var(--book-rule);
+  font-style: italic;
+  color: var(--book-muted);
+}
+
+.book-prose hr {
+  border: 0;
+  height: 1px;
+  background: var(--book-rule);
+  width: 4.5rem;
+  margin: 3.25rem auto;
+}
+
+/* Tactile Story-Driven Micro-Interactions (smooth, weighty, one-shot) */
+.fx-cleave {
+  position: relative;
+  display: inline-block;
+  padding-inline: 0.12em;
+  cursor: default;
+}
+.fx-cleave-l,
+.fx-cleave-r {
+  display: inline-block;
+  transition:
+    color 1.2s ease,
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.fx-cleave-seam {
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  vertical-align: -0.1em;
+  margin-inline: 0.06em;
+  background: var(--book-ink);
+  opacity: 0;
+  transform: scaleY(0.2);
+  transition: opacity 0.55s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fx-cleave.is-awake .fx-cleave-l {
+  transform: translateX(-0.05em);
+}
+.fx-cleave.is-awake .fx-cleave-r {
+  transform: translateX(0.05em);
+}
+.fx-cleave.is-awake .fx-cleave-seam {
+  opacity: 0.14;
+  transform: scaleY(0.85);
+}
+.fx-cleave:hover .fx-cleave-l {
+  transform: translateX(-0.24em) rotate(-0.8deg);
+}
+.fx-cleave:hover .fx-cleave-r {
+  transform: translateX(0.24em) rotate(0.8deg);
+}
+.fx-cleave:hover .fx-cleave-seam {
+  opacity: 0.45;
+  transform: scaleY(1.05);
+}
+
+.fx-impact {
+  display: inline-block;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+.book-death-content.fx-impact {
+  display: block;
+}
+
+.fx-ghost {
+  display: inline-block;
+  transition:
+    color 1.2s ease,
+    opacity 1.6s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1.6s cubic-bezier(0.22, 1, 0.36, 1),
+    letter-spacing 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, filter, letter-spacing;
+}
+.fx-ghost.is-awake {
+  opacity: 0.56;
+  filter: blur(0.65px);
+  letter-spacing: 0.04em;
+}
+.fx-ghost:hover {
+  opacity: 1;
+  filter: blur(0px);
+  letter-spacing: 0.01em;
+  transition-duration: 0.45s;
+}
+
+.fx-slash {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  padding-inline: 0.06em;
+}
+.fx-slash-label {
+  display: inline-block;
+  will-change: transform;
+}
+.fx-slash-blade {
+  position: absolute;
+  left: -3%;
+  right: -3%;
+  top: 52%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--book-ink) 18%, var(--book-ink) 82%, transparent);
+  transform-origin: left center;
+  transform: rotate(-5deg) scaleX(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fx-wither {
+  display: inline-block;
+  transition: opacity 0.9s ease, filter 0.9s ease, letter-spacing 0.9s ease;
+}
+
+.fx-echo {
+  display: inline-block;
+  text-shadow: 0 0 18px var(--book-death-glow), 0 6px 14px var(--book-death-glow);
+}
+
+/* 5 Pivotal Phrases per Chapter — exclusive burnt orange (#E05A3F) + underline sweep */
+.fx-key {
+  color: var(--book-key, #E05A3F);
+  font-weight: 500;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 92%;
+  background-size: 0% 1.5px;
+  padding-bottom: 1px;
+  transition:
+    background-size 1.15s cubic-bezier(0.22, 1, 0.36, 1),
+    color 1.2s ease;
+}
+.fx-key.is-awake,
+html.quiet-mode .fx-key,
+html:not(.book-motion-ready) .fx-key {
+  background-size: 100% 1.5px;
+}
+
+/* Stark editorial monochrome highlight (black on light themes, white on dark themes) */
+.fx-highlight {
+  display: inline;
+  color: var(--book-ink);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0.06em 0.24em 0.1em;
+  background-image: linear-gradient(var(--book-hl-bg), var(--book-hl-bg));
+  background-repeat: no-repeat;
+  background-position: 0 50%;
+  background-size: 0% 100%;
+  transition:
+    background-size 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.65s ease;
+}
+.fx-highlight.is-awake,
+html.quiet-mode .fx-highlight,
+html:not(.book-motion-ready) .fx-highlight {
+  background-size: 100% 100%;
+  color: var(--book-hl-fg);
+}
+
+/* Crisp editorial bold emphasis (true Newsreader variable 700 weight) */
+.book-prose strong,
+.fx-bold {
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  color: var(--book-ink);
+}
+
+/* Subtle movement & action emphasis classes (animated via GSAP ScrollTrigger) */
+.fx-move {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* 1. Non-kinetic chapter peripheral wake-up (zero per-paragraph blur; guarded by :not(.is-revealed)) */
+html.book-motion-ready:not(.quiet-mode) .book-prose:not([data-kinetic-chapter="true"]) > p:not(.is-revealed),
+html.book-motion-ready:not(.quiet-mode) .book-prose:not([data-kinetic-chapter="true"]) > h2:not(.is-revealed),
+html.book-motion-ready:not(.quiet-mode) .book-prose > [data-death-voice]:not(.is-revealed) {
+  opacity: 0.22;
+  transform: translateY(10px);
+  will-change: opacity, transform;
+}
+
+html.quiet-mode .book-prose > p,
+html.quiet-mode .book-prose > h2,
+html.quiet-mode .book-prose > [data-death-voice] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Optical Depth-of-Field Edge Blur Overlay (#book-dof-lens)
+   Uses 2 lightweight edge-only strips (top 13vh + bottom 15vh) instead of 3 stacked full-screen blurs */
+.book-dof-lens {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  transition: opacity 0.55s ease;
+}
+
+.book-dof-lens.is-paused {
+  opacity: 0;
+}
+
+.book-dof-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  contain: strict;
+}
+
+.book-dof-edge--top {
+  top: 0;
+  height: 13vh;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 35%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 35%, transparent 100%);
+}
+
+.book-dof-edge--bottom {
+  bottom: 0;
+  height: 15vh;
+  -webkit-backdrop-filter: blur(3.5px);
+  backdrop-filter: blur(3.5px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.72) 38%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.72) 38%, transparent 100%);
+}
+
+.book-dof-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--book-bg) 44%, transparent) 0%,
+    transparent 9%,
+    transparent 89%,
+    color-mix(in srgb, var(--book-bg) 52%, transparent) 100%
+  );
+}
+
+/* Bleeding Sun ambient crimson top-edge glow (toggled on [data-ambient="bleeding-sun"]) */
+.book-sun-glow {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 44vh;
+  z-index: 15;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 72% 85% at 50% -18%,
+    rgba(168, 42, 32, 0.14) 0%,
+    rgba(140, 32, 24, 0.05) 45%,
+    transparent 76%
+  );
+  opacity: 0;
+  transition: opacity 1.8s ease;
+}
+.book-sun-glow.is-active {
+  opacity: 1;
+}
+html.quiet-mode .book-sun-glow,
+body[data-quiet="true"] .book-sun-glow {
+  opacity: 0 !important;
+}
+
+/* Desktop Left-Margin Scene Spine */
+.book-scene-spine {
+  position: fixed;
+  left: clamp(1.25rem, 2.6vw, 2.75rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 35;
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+@media (min-width: 1200px) {
+  .book-scene-spine.is-visible {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+.book-scene-spine__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: transparent;
+  border: 0;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  font-family: "Space Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--book-muted);
+  opacity: 0.45;
+  transition: opacity 0.35s ease, color 0.6s ease;
+}
+.book-scene-spine__btn:hover,
+.book-scene-spine__btn.is-active {
+  opacity: 1;
+  color: var(--book-ink);
+}
+.book-scene-spine__tick {
+  display: inline-block;
+  width: 10px;
+  height: 1px;
+  background: currentColor;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.book-scene-spine__btn.is-active .book-scene-spine__tick {
+  width: 22px;
+}
+
+/* Editorial Typographic Marginalia Note */
+.book-marginalia {
+  margin: 1.5rem 0;
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--book-rule);
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  line-height: 1.65;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--book-muted);
+  opacity: 0.72;
+}
+@media (min-width: 1024px) {
+  .book-marginalia {
+    position: relative;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .book-marginalia__inner {
+    position: absolute;
+    top: -0.6rem;
+    width: clamp(160px, 16vw, 220px);
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--book-rule);
+  }
+  .book-marginalia--left .book-marginalia__inner {
+    right: calc(100% + 3.5rem);
+    text-align: right;
+  }
+  .book-marginalia--right .book-marginalia__inner {
+    left: calc(100% + 3.5rem);
+    text-align: left;
+  }
+}
+@media (min-width: 1280px) {
+  .book-marginalia--left .book-marginalia__inner {
+    right: calc(100% + 4.75rem);
+  }
+  .book-marginalia--right .book-marginalia__inner {
+    left: calc(100% + 4.75rem);
+  }
+}
+
+/* Opener Plate quiet vertical scroll hairline */
+@keyframes book-scroll-line {
+  0% { transform: scaleY(0); transform-origin: top; opacity: 0.2; }
+  45% { transform: scaleY(1); transform-origin: top; opacity: 0.85; }
+  55% { transform: scaleY(1); transform-origin: bottom; opacity: 0.85; }
+  100% { transform: scaleY(0); transform-origin: bottom; opacity: 0.2; }
+}
+.book-scroll-hairline {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: currentColor;
+  animation: book-scroll-line 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Chime concentric sound ripple */
+.fx-chime {
+  position: relative;
+}
+@keyframes book-chime-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.35);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+.fx-chime-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.8em;
+  height: 2.8em;
+  border-radius: 9999px;
+  border: 1px solid var(--book-chime, #c9a959);
+  pointer-events: none;
+  animation: book-chime-ripple 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Golden Life-Thread Sever on Snip (.fx-slash[data-thread="true"]) */
+.fx-thread-wrap {
+  position: relative;
+  display: inline-block;
+}
+.fx-thread-top,
+.fx-thread-bottom {
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  background: var(--book-chime, #c9a959);
+  pointer-events: none;
+  opacity: 0.7;
+  will-change: transform, opacity;
+}
+.fx-thread-top {
+  bottom: 100%;
+  height: 36px;
+  margin-bottom: 4px;
+  transform-origin: bottom center;
+}
+.fx-thread-bottom {
+  top: 100%;
+  height: 20px;
+  margin-top: 4px;
+  transform-origin: top center;
+}
+
+html.quiet-mode .book-dof-lens,
+body[data-quiet="true"] .book-dof-lens {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Chapter 1 Kinetic Typography Helpers (scattered letters, drifting/waving words, rising lines) */
+.fx-scatter {
+  display: inline;
+}
+
+.fx-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.fx-char,
+.fx-kword,
+.fx-lword {
+  display: inline-block;
+}
+
+html.quiet-mode .fx-char,
+html.quiet-mode .fx-kword,
+html.quiet-mode .fx-lword {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* 2. Micro-typographic pacing classes */
+.fx-whisper {
+  font-style: italic;
+  letter-spacing: 0.035em;
+  opacity: 0.82;
+}
+
+.fx-stretch {
+  display: inline-block;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  transition:
+    color 1.2s ease,
+    letter-spacing 1.6s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 1.2s ease;
+}
+.fx-stretch.is-awake {
+  letter-spacing: 0.11em;
+}
+
+.fx-chime {
+  font-style: italic;
+  color: var(--book-chime, #c9a959);
+  letter-spacing: 0.04em;
+  transition: letter-spacing 1.2s ease, text-shadow 1.2s ease, color 1.2s ease;
+}
+.fx-chime.is-awake {
+  text-shadow: 0 0 18px color-mix(in srgb, var(--book-chime, #c9a959) 35%, transparent);
+}
+
+.fx-sharp {
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--book-ink);
+}
+
+.fx-ritual {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.12em;
+  line-height: 1.9;
+}
+
+/* Quiet Mode & Reduced Motion cleanly keep all micro-interactions static and legible */
+html.quiet-mode .fx-cleave-l,
+html.quiet-mode .fx-cleave-r,
+html.quiet-mode .fx-impact,
+html.quiet-mode .fx-slash-label,
+html.quiet-mode .fx-stretch {
+  transform: none !important;
+  letter-spacing: inherit !important;
+}
+html.quiet-mode .fx-cleave-seam,
+html.quiet-mode .fx-slash-blade,
+html.quiet-mode .fx-chime-ring,
+html.quiet-mode .fx-thread-top,
+html.quiet-mode .fx-thread-bottom {
+  opacity: 0 !important;
+  transform: none !important;
+}
+html.quiet-mode .book-scroll-hairline {
+  animation: none !important;
+  opacity: 0.45;
+}
+html.quiet-mode .fx-ghost {
+  opacity: 1 !important;
+  filter: none !important;
+  letter-spacing: inherit !important;
+}
+
+body[data-quiet="true"] #book-dust-canvas {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-prose > p,
+  .book-prose > h2,
+  .book-prose > [data-death-voice] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .book-dof-lens,
+  .book-sun-glow {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+  .book-scroll-hairline {
+    animation: none !important;
+  }
+  .fx-chime-ring,
+  .fx-thread-top,
+  .fx-thread-bottom {
+    display: none !important;
+  }
+  .fx-char,
+  .fx-kword,
+  .fx-lword {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .fx-key {
+    background-size: 100% 1.5px;
+    transition: none;
+  }
+  .fx-highlight {
+    background-size: 100% 100%;
+    color: var(--book-hl-fg);
+    transition: none;
+  }
+  .fx-cleave-l,
+  .fx-cleave-r,
+  .fx-impact,
+  .fx-slash-label,
+  .fx-stretch {
+    transform: none !important;
+    letter-spacing: inherit !important;
+    transition: none !important;
+  }
+  .fx-cleave-seam,
+  .fx-slash-blade {
+    opacity: 0 !important;
+  }
+  .fx-ghost {
+    opacity: 1 !important;
+    filter: none !important;
+    letter-spacing: inherit !important;
+    transition: none !important;
+  }
+}

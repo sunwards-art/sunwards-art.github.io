@@ -159,11 +159,13 @@ async function processCutouts() {
   }
 }
 
-await processShowcase();
-await processCutouts();
+const eyeOnly = process.argv.includes("--eye-only");
 
-// Pre-bake a tileable monochrome alpha paper grain texture (eliminates runtime SVG feTurbulence + mix-blend-mode: multiply)
-{
+if (!eyeOnly) {
+  await processShowcase();
+  await processCutouts();
+
+  // Pre-bake a tileable monochrome alpha paper grain texture (eliminates runtime SVG feTurbulence + mix-blend-mode: multiply)
   const noiseSize = 128;
   const noiseBuf = Buffer.alloc(noiseSize * noiseSize * 4);
   let seed = 0x517cc1b7;
@@ -199,25 +201,47 @@ if (fs.existsSync(path.join(gifSrcDir, "IMG_0990.gif"))) {
   const loopKb = (fs.statSync(loopOut).size / 1024).toFixed(1);
   console.log(`  ✓ eye-loop.webp (${loopKb}KB animated WebP)`);
 
-  // Vertical sprite strip for scroll-scrubbed canvas
+  // Pack frames into a 6x6 sprite sheet (2880x2880) so mobile GPUs never exceed 4096px/8192px texture caps
+  const meta = await sharp(srcGif, { animated: true }).metadata();
   const { data, info } = await sharp(srcGif, { animated: true })
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
+
+  const frameW = meta.width || info.width;
+  const frameH = meta.pageHeight || frameW;
+  const totalFrames = meta.pages || Math.round(info.height / frameH);
+  const cols = 6;
+  const rows = Math.ceil(totalFrames / cols);
+  const gridW = cols * frameW;
+  const gridH = rows * frameH;
+  const channels = info.channels;
+  const gridBuf = Buffer.alloc(gridW * gridH * channels);
+
+  for (let f = 0; f < totalFrames; f++) {
+    const col = f % cols;
+    const row = Math.floor(f / cols);
+    for (let y = 0; y < frameH; y++) {
+      const srcOff = (f * frameH + y) * frameW * channels;
+      const dstOff = ((row * frameH + y) * gridW + col * frameW) * channels;
+      data.copy(gridBuf, dstOff, srcOff, srcOff + frameW * channels);
+    }
+  }
+
   const stripOut = path.join(gifOutDir, "eye-strip.webp");
-  await sharp(data, {
-    raw: { width: info.width, height: info.height, channels: info.channels },
+  await sharp(gridBuf, {
+    raw: { width: gridW, height: gridH, channels },
   })
     .webp({ quality: 88, effort: 6, smartSubsample: true })
     .toFile(stripOut);
   const stripKb = (fs.statSync(stripOut).size / 1024).toFixed(1);
-  console.log(`  ✓ eye-strip.webp (${info.width}x${info.height}, ${stripKb}KB)`);
+  console.log(`  ✓ eye-strip.webp (${gridW}x${gridH}, ${cols}x${rows} grid, ${stripKb}KB)`);
 }
 
 const projectsSrcDir = path.resolve(rootDir, "..", "projects");
 const projectsOutDir = path.join(rootDir, "public", "projects");
 
-if (fs.existsSync(projectsSrcDir)) {
+if (!eyeOnly && fs.existsSync(projectsSrcDir)) {
   console.log("\nProcessing project assets for isometric grid...");
   fs.mkdirSync(projectsOutDir, { recursive: true });
 

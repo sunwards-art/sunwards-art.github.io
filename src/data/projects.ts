@@ -114,4 +114,19 @@ export const projects: Project[] = [
       "/projects/free-1.webp",
     ],
   },
+  {
+    id: "symphony-withered-world",
+    num: "07",
+    title: "Symphony of a Withered World",
+    category: "Interactive Web Book",
+    status: "READ STORY →",
+    hook: "An atmospheric, kinetic story about Death and the last girl on Earth.",
+    href: "/book",
+    accent: "ochre",
+    layers: [
+      "/art/showcase/highland-study.webp",
+      "/art/showcase/iron-knight.webp",
+      "/art/showcase/empire-girl.webp",
+    ],
+  },
 ];

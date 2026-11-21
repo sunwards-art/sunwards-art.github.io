@@ -29,16 +29,17 @@ const accentBg = {
     <div>
       <div class="mb-3 flex flex-wrap items-center gap-4 font-mono text-xs font-bold uppercase tracking-[0.2em]">
         <span class="text-ochre">02 // ARCHIVE</span>
-        <span class="text-paper/60">ISOMETRIC SCROLLING GRID · HOVER TO LIFT 3D STACK</span>
+        <span class="text-paper/60"><span class="non-phone-only">ISOMETRIC SCROLLING GRID · HOVER TO LIFT 3D STACK</span><span class="phone-only">3D LAYERED STACKS · TILT FOR DEPTH</span></span>
       </div>
-      <h2 class="font-display text-[length:clamp(3.1rem,11vw,10rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
+      <h2 class="font-display text-[length:clamp(3.1rem,11vw,10rem)] max-sm:text-[length:clamp(2.25rem,10vw,3.1rem)] font-extrabold uppercase leading-[0.86] tracking-[-0.04em]">
         Other <span class="font-serif italic font-normal lowercase text-accent">projects</span>
       </h2>
     </div>
 
     <div class="max-w-sm border-l-2 border-accent pl-4">
       <p class="font-mono text-xs uppercase leading-relaxed tracking-[0.14em] text-paper/75">
-        Games, 3D tools, apps, and art communities. Click any project plate to launch.
+        <span class="non-phone-only">Games, 3D tools, apps, and art communities. Click any project plate to launch.</span>
+        <span class="phone-only">Games, 3D tools, apps, and art communities. Tap any plate to launch, or cycle its layers.</span>
       </p>
     </div>
   </header>
@@ -60,11 +61,11 @@ const accentBg = {
       <ul class="iso-grid" id="iso-grid">
         {projects.map((p, idx) => {
           const Tag = p.href ? "a" : "button";
+          const isExternal = p.href ? /^https?:\/\//.test(p.href) : false;
           const linkProps = p.href
             ? {
                 href: p.href,
-                target: "_blank",
-                rel: "noopener noreferrer",
+                ...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {}),
               }
             : {
                 type: "button" as const,
@@ -181,6 +182,17 @@ const accentBg = {
                   })}
                 </div>
               </Tag>
+              {p.layers.length > 1 && (
+                <button
+                  type="button"
+                  data-cycle-layer
+                  class="iso-cycle-btn"
+                  aria-label={`Cycle ${p.title} preview layers`}
+                >
+                  <span data-layer-badge>1/{p.layers.length}</span>
+                  <span aria-hidden="true">↻</span>
+                </button>
+              )}
             </li>
           );
         })}
@@ -331,162 +343,397 @@ const accentBg = {
       margin-top: 0;
     }
   }
+
+  .iso-cycle-btn {
+    display: none;
+  }
+
+  @media (max-width: 639px), ((pointer: coarse) and (max-height: 500px)) {
+    .iso-viewport {
+      perspective: none;
+      padding: 1.25rem 1.25rem 2.5rem;
+    }
+    .isolayer {
+      max-width: 100%;
+      margin: 0;
+      transform: none;
+      transform-style: flat;
+    }
+    .iso-grid {
+      grid-template-columns: 1fr;
+      gap: 2.25rem;
+      max-width: 440px;
+      transform: none !important;
+    }
+    .iso-item--stagger {
+      margin-top: 0;
+    }
+    .iso-item {
+      perspective: 1100px;
+      transform-style: preserve-3d;
+    }
+    .iso-link {
+      transform-style: preserve-3d;
+      transition: transform 180ms ease-out, scale 150ms ease-out;
+    }
+    .iso-link:active {
+      scale: 0.985;
+    }
+    .isolayer--shadow .iso-link::before {
+      display: none;
+    }
+    .iso-cycle-btn {
+      display: inline-flex;
+      position: absolute;
+      top: 0.625rem;
+      right: 0.625rem;
+      z-index: 30;
+      transform: translateZ(60px);
+      min-height: 36px;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid rgba(239, 235, 224, 0.45);
+      background: rgba(14, 14, 13, 0.86);
+      padding: 0.25rem 0.65rem;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--color-paper);
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+    }
+    .iso-cycle-btn:active {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+  }
 </style>
 
 <script>
   /**
    * CODROPS ISOMETRIC SCROLLING GRID CONTROLLER
    * - Decoupled flat hit surface (.iso-base-frame) + sibling 3D stack stage (.iso-stack-stage).
-   * - All inner children of .iso-base-frame have pointer-events: none so moving the cursor across
-   *   the title, description, and image well hits a single unchanging flat surface.
+   * - Desktop & tablets keep the full 45deg isometric scrolling grid and hover lift.
+   * - Phones render upright 3D layered dioramas with scroll-focus lift, gyro depth parallax, and layer cycling.
    */
+  import { getMotionInput, isPhoneViewport } from "../lib/motionInput";
+
   const viewport = document.getElementById("iso-scroll-viewport");
   const gridEl = document.getElementById("iso-grid");
   const items = Array.from(document.querySelectorAll<HTMLElement>("[data-iso-item]"));
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const onPhone = isPhoneViewport();
 
   const layerRotations = [-1.5, 1.5, -1];
-  const leaveTimers = new WeakMap<HTMLElement, number>();
 
-  function expandItem(item: HTMLElement) {
-    const pendingTimer = leaveTimers.get(item);
-    if (pendingTimer) {
-      clearTimeout(pendingTimer);
-      leaveTimers.delete(item);
-    }
-    if (item.classList.contains("is-expanded")) return;
-    item.classList.add("is-expanded");
-    const layers = Array.from(item.querySelectorAll<HTMLElement>(".iso-layer"));
+  if (!onPhone) {
+    const leaveTimers = new WeakMap<HTMLElement, number>();
 
-    layers.forEach((layer, pos) => {
-      const step = pos + 1;
-      const translateZ = step * 72;
-      const verticalShift = -step * 28;
-      const rotateZ = layerRotations[pos % layerRotations.length];
-      layer.style.transform = `translate3d(${verticalShift}px, ${verticalShift}px, ${translateZ}px) rotateZ(${rotateZ}deg)`;
-    });
-
-    // Swap any static poster images to animated WebP while hovered
-    item.querySelectorAll<HTMLImageElement>("img[data-anim-src]").forEach((img) => {
-      if (img.dataset.animSrc && img.src !== img.dataset.animSrc) {
-        img.src = img.dataset.animSrc;
-      }
-    });
-  }
-
-  function collapseItem(item: HTMLElement) {
-    if (!item.classList.contains("is-expanded")) return;
-    item.classList.remove("is-expanded");
-    const layers = Array.from(item.querySelectorAll<HTMLElement>(".iso-layer"));
-    layers.forEach((layer) => {
-      layer.style.transform = "";
-    });
-
-    // Revert animated WebP back to lightweight static poster when not hovered
-    item.querySelectorAll<HTMLImageElement>("img[data-static-src]").forEach((img) => {
-      if (img.dataset.staticSrc) {
-        img.src = img.dataset.staticSrc;
-      }
-    });
-  }
-
-  items.forEach((item) => {
-    item.addEventListener("pointerenter", () => {
-      if (!reduced) expandItem(item);
-    });
-    item.addEventListener("pointermove", () => {
-      if (!reduced) expandItem(item);
-    });
-    item.addEventListener("pointerleave", () => {
-      const timer = window.setTimeout(() => {
+    function expandItem(item: HTMLElement) {
+      const pendingTimer = leaveTimers.get(item);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
         leaveTimers.delete(item);
-        collapseItem(item);
-      }, 45);
-      leaveTimers.set(item, timer);
-    });
-    item.addEventListener("focusin", () => {
-      if (!reduced) expandItem(item);
-    });
-    item.addEventListener("focusout", () => {
-      collapseItem(item);
-    });
+      }
+      if (item.classList.contains("is-expanded")) return;
+      item.classList.add("is-expanded");
+      const layers = Array.from(item.querySelectorAll<HTMLElement>(".iso-layer"));
 
-    // Coming soon projects: clicking cycles which uploaded screenshot is on top of the 3D stack
-    const comingSoonBtn = item.querySelector<HTMLElement>("[data-coming-soon]");
-    if (comingSoonBtn) {
-      comingSoonBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const imgs = Array.from(item.querySelectorAll<HTMLImageElement>(".iso-img"));
-        if (imgs.length > 1) {
-          const srcs = imgs.map((img) => img.src);
-          srcs.unshift(srcs.pop()!);
-          imgs.forEach((img, i) => {
-            img.src = srcs[i];
-          });
-        }
-        const pill = item.querySelector<HTMLElement>("[data-status-pill]");
-        if (pill) {
-          pill.textContent = "COMING SOON · LAYER CYCLED";
-          setTimeout(() => {
-            pill.textContent = "COMING SOON";
-          }, 1400);
+      layers.forEach((layer, pos) => {
+        const step = pos + 1;
+        const translateZ = step * 72;
+        const verticalShift = -step * 28;
+        const rotateZ = layerRotations[pos % layerRotations.length];
+        layer.style.transform = `translate3d(${verticalShift}px, ${verticalShift}px, ${translateZ}px) rotateZ(${rotateZ}deg)`;
+      });
+
+      // Swap any static poster images to animated WebP while hovered
+      item.querySelectorAll<HTMLImageElement>("img[data-anim-src]").forEach((img) => {
+        if (img.dataset.animSrc && img.src !== img.dataset.animSrc) {
+          img.src = img.dataset.animSrc;
         }
       });
     }
-  });
 
-  // Zero-thrash isometric scroll glide: caches page offsets on resize and only runs while visible
-  if (viewport && gridEl && !reduced) {
-    let isSectionVisible = false;
-    let cachedTop = 0;
-    let cachedHeight = 1;
-    let viewH = window.innerHeight;
-    let rafId = 0;
+    function collapseItem(item: HTMLElement) {
+      if (!item.classList.contains("is-expanded")) return;
+      item.classList.remove("is-expanded");
+      const layers = Array.from(item.querySelectorAll<HTMLElement>(".iso-layer"));
+      layers.forEach((layer) => {
+        layer.style.transform = "";
+      });
 
-    function measureBounds() {
-      const rect = viewport!.getBoundingClientRect();
-      cachedTop = rect.top + window.scrollY;
-      cachedHeight = Math.max(1, viewport!.offsetHeight);
-      viewH = window.innerHeight;
+      // Revert animated WebP back to lightweight static poster when not hovered
+      item.querySelectorAll<HTMLImageElement>("img[data-static-src]").forEach((img) => {
+        if (img.dataset.staticSrc) {
+          img.src = img.dataset.staticSrc;
+        }
+      });
     }
 
-    function updateIsoScroll() {
-      rafId = 0;
-      if (!isSectionVisible) return;
-      const totalSpan = cachedHeight + viewH;
-      const elapsed = window.scrollY + viewH - cachedTop;
-      const progress = Math.min(1, Math.max(0, elapsed / totalSpan));
-      const isoTranslateY = (0.35 - progress) * 180;
-      gridEl!.style.transform = `translate3d(0, ${isoTranslateY.toFixed(1)}px, 0)`;
+    items.forEach((item) => {
+      item.addEventListener("pointerenter", () => {
+        if (!reduced) expandItem(item);
+      });
+      item.addEventListener("pointermove", () => {
+        if (!reduced) expandItem(item);
+      });
+      item.addEventListener("pointerleave", () => {
+        const timer = window.setTimeout(() => {
+          leaveTimers.delete(item);
+          collapseItem(item);
+        }, 45);
+        leaveTimers.set(item, timer);
+      });
+      item.addEventListener("focusin", () => {
+        if (!reduced) expandItem(item);
+      });
+      item.addEventListener("focusout", () => {
+        collapseItem(item);
+      });
+
+      // Coming soon projects: clicking cycles which uploaded screenshot is on top of the 3D stack
+      const comingSoonBtn = item.querySelector<HTMLElement>("[data-coming-soon]");
+      if (comingSoonBtn) {
+        comingSoonBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const imgs = Array.from(item.querySelectorAll<HTMLImageElement>(".iso-img"));
+          if (imgs.length > 1) {
+            const srcs = imgs.map((img) => img.src);
+            srcs.unshift(srcs.pop()!);
+            imgs.forEach((img, i) => {
+              img.src = srcs[i];
+            });
+          }
+          const pill = item.querySelector<HTMLElement>("[data-status-pill]");
+          if (pill) {
+            pill.textContent = "COMING SOON · LAYER CYCLED";
+            setTimeout(() => {
+              pill.textContent = "COMING SOON";
+            }, 1400);
+          }
+        });
+      }
+    });
+
+    // Zero-thrash isometric scroll glide: caches page offsets on resize and only runs while visible
+    if (viewport && gridEl && !reduced) {
+      let isSectionVisible = false;
+      let cachedTop = 0;
+      let cachedHeight = 1;
+      let viewH = window.innerHeight;
+      let rafId = 0;
+
+      function measureBounds() {
+        const rect = viewport!.getBoundingClientRect();
+        cachedTop = rect.top + window.scrollY;
+        cachedHeight = Math.max(1, viewport!.offsetHeight);
+        viewH = window.innerHeight;
+      }
+
+      function updateIsoScroll() {
+        rafId = 0;
+        if (!isSectionVisible) return;
+        const totalSpan = cachedHeight + viewH;
+        const elapsed = window.scrollY + viewH - cachedTop;
+        const progress = Math.min(1, Math.max(0, elapsed / totalSpan));
+        const isoTranslateY = (0.35 - progress) * 180;
+        gridEl!.style.transform = `translate3d(0, ${isoTranslateY.toFixed(1)}px, 0)`;
+      }
+
+      function onScroll() {
+        if (isSectionVisible && !rafId) {
+          rafId = requestAnimationFrame(updateIsoScroll);
+        }
+      }
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          isSectionVisible = entries[0]?.isIntersecting ?? false;
+          if (isSectionVisible) {
+            measureBounds();
+            updateIsoScroll();
+          }
+        },
+        { rootMargin: "200px" }
+      );
+      io.observe(viewport);
+
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener(
+        "resize",
+        () => {
+          measureBounds();
+          updateIsoScroll();
+        },
+        { passive: true }
+      );
+      measureBounds();
+    }
+  } else {
+    const focusedItems = new Set<HTMLElement>();
+    const visibleItems = new Set<HTMLElement>();
+    const cycleOffsets = new WeakMap<HTMLElement, number>();
+    let gyroX = 0;
+    let gyroY = 0;
+    let gyroActive = false;
+
+    const itemMeta = new Map(
+      items.map((item) => [
+        item,
+        {
+          link: item.querySelector<HTMLElement>(".iso-link"),
+          layers: Array.from(item.querySelectorAll<HTMLElement>(".iso-layer")),
+          imgs: Array.from(item.querySelectorAll<HTMLImageElement>(".iso-img")),
+          badge: item.querySelector<HTMLElement>("[data-layer-badge]"),
+          pill: item.querySelector<HTMLElement>("[data-status-pill]"),
+        },
+      ])
+    );
+
+    function applyPhoneItemTransform(item: HTMLElement) {
+      if (reduced) return;
+      const meta = itemMeta.get(item);
+      if (!meta) return;
+      const isFocused = focusedItems.has(item);
+
+      if (meta.link) {
+        meta.link.style.transform = gyroActive
+          ? `rotateX(${(-gyroY * 4.5).toFixed(2)}deg) rotateY(${(gyroX * 4.5).toFixed(2)}deg)`
+          : "";
+      }
+
+      meta.layers.forEach((layer, pos) => {
+        const depth = pos + 1;
+        const baseZ = isFocused ? depth * 12 : depth * 4;
+        const focusY = isFocused ? -pos * 5 : 0;
+        const focusRot = isFocused ? layerRotations[pos % layerRotations.length] * 0.6 : 0;
+        const gx = gyroActive ? gyroX * depth * 6.5 : 0;
+        const gy = gyroActive ? gyroY * depth * 4.5 : 0;
+        layer.style.transform = `translate3d(${gx.toFixed(1)}px, ${(focusY + gy).toFixed(1)}px, ${baseZ}px) rotateZ(${focusRot.toFixed(2)}deg)`;
+      });
     }
 
-    function onScroll() {
-      if (isSectionVisible && !rafId) {
-        rafId = requestAnimationFrame(updateIsoScroll);
+    function cycleLayers(item: HTMLElement, showPillFeedback: boolean) {
+      const meta = itemMeta.get(item);
+      if (!meta || meta.imgs.length <= 1) return;
+
+      const isFocused = focusedItems.has(item);
+      const states = meta.imgs.map((img) => ({
+        src: img.getAttribute("src") || img.src,
+        staticSrc: img.dataset.staticSrc,
+        animSrc: img.dataset.animSrc,
+      }));
+      states.unshift(states.pop()!);
+
+      meta.imgs.forEach((img, i) => {
+        const next = states[i];
+        if (next.staticSrc !== undefined) {
+          img.dataset.staticSrc = next.staticSrc;
+        } else {
+          delete img.dataset.staticSrc;
+        }
+        if (next.animSrc !== undefined) {
+          img.dataset.animSrc = next.animSrc;
+        } else {
+          delete img.dataset.animSrc;
+        }
+        img.src = isFocused && next.animSrc ? next.animSrc : next.staticSrc ?? next.src;
+      });
+
+      const nextOffset = ((cycleOffsets.get(item) ?? 0) + 1) % meta.imgs.length;
+      cycleOffsets.set(item, nextOffset);
+      if (meta.badge) {
+        meta.badge.textContent = `${nextOffset + 1}/${meta.imgs.length}`;
+      }
+
+      if (showPillFeedback && meta.pill) {
+        meta.pill.textContent = "COMING SOON · LAYER CYCLED";
+        setTimeout(() => {
+          meta.pill!.textContent = "COMING SOON";
+        }, 1400);
       }
     }
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        isSectionVisible = entries[0]?.isIntersecting ?? false;
-        if (isSectionVisible) {
-          measureBounds();
-          updateIsoScroll();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    io.observe(viewport);
+    items.forEach((item) => {
+      const cycleBtn = item.querySelector<HTMLButtonElement>("[data-cycle-layer]");
+      cycleBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        cycleLayers(item, false);
+      });
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener(
-      "resize",
-      () => {
-        measureBounds();
-        updateIsoScroll();
-      },
-      { passive: true }
-    );
-    measureBounds();
+      const comingSoonBtn = item.querySelector<HTMLElement>("[data-coming-soon]");
+      if (comingSoonBtn) {
+        comingSoonBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          cycleLayers(item, true);
+        });
+      }
+    });
+
+    if (!reduced) {
+      const focusIo = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const item = entry.target as HTMLElement;
+            const meta = itemMeta.get(item);
+            if (!meta) continue;
+            if (entry.isIntersecting) {
+              focusedItems.add(item);
+              item.classList.add("is-expanded");
+              meta.imgs.forEach((img) => {
+                if (img.dataset.animSrc && img.src !== img.dataset.animSrc) {
+                  img.src = img.dataset.animSrc;
+                }
+              });
+            } else {
+              focusedItems.delete(item);
+              item.classList.remove("is-expanded");
+              meta.imgs.forEach((img) => {
+                if (img.dataset.staticSrc) {
+                  img.src = img.dataset.staticSrc;
+                }
+              });
+            }
+            applyPhoneItemTransform(item);
+          }
+        },
+        { rootMargin: "-22% 0px -22% 0px", threshold: 0.25 }
+      );
+
+      const visIo = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const item = entry.target as HTMLElement;
+            const meta = itemMeta.get(item);
+            if (entry.isIntersecting) {
+              visibleItems.add(item);
+              applyPhoneItemTransform(item);
+            } else {
+              visibleItems.delete(item);
+              if (meta?.link) meta.link.style.transform = "";
+              meta?.layers.forEach((layer) => {
+                layer.style.transform = "";
+              });
+            }
+          }
+        },
+        { rootMargin: "100px" }
+      );
+
+      items.forEach((item) => {
+        focusIo.observe(item);
+        visIo.observe(item);
+      });
+
+      getMotionInput().subscribe(({ x, y, active }) => {
+        gyroX = x;
+        gyroY = y;
+        gyroActive = active;
+        if (!active || visibleItems.size === 0) return;
+        visibleItems.forEach((item) => applyPhoneItemTransform(item));
+      });
+    }
   }
 </script>

@@ -1,0 +1,62 @@
+---
+interface Props {
+  height?: "sm" | "md" | "lg";
+  ornament?: "dot" | "hairline" | "hollow";
+}
+
+const { height = "md", ornament = "dot" } = Astro.props;
+
+const spacingMap = {
+  sm: "my-12 py-6",
+  md: "my-24 py-12",
+  lg: "my-40 py-20",
+};
+---
+
+<div
+  class:list={[
+    "book-silence flex flex-col items-center justify-center select-none",
+    spacingMap[height],
+  ]}
+  data-silence={height}
+  aria-hidden="true"
+>
+  {ornament === "hairline" ? (
+    <div class="flex flex-col items-center gap-3">
+      <span
+        class="block h-12 w-px opacity-40 transition-colors duration-1000"
+        style="background-color: var(--book-ink);"
+      />
+      <span
+        class="block h-1 w-1 rounded-full opacity-55"
+        style="background-color: var(--book-ink);"
+      />
+      <span
+        class="block h-12 w-px opacity-40 transition-colors duration-1000"
+        style="background-color: var(--book-ink);"
+      />
+    </div>
+  ) : ornament === "hollow" ? (
+    <span
+      class="font-mono text-xs tracking-[0.4em] opacity-45"
+      style="color: var(--book-muted);"
+    >
+      · &nbsp; ◇ &nbsp; ·
+    </span>
+  ) : (
+    <div class="flex items-center gap-5">
+      <span
+        class="block h-px w-10 opacity-25"
+        style="background-color: var(--book-ink);"
+      />
+      <span
+        class="block h-1.5 w-1.5 rotate-45 opacity-55"
+        style="background-color: var(--book-ink);"
+      />
+      <span
+        class="block h-px w-10 opacity-25"
+        style="background-color: var(--book-ink);"
+      />
+    </div>
+  )}
+</div>

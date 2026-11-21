@@ -1,0 +1,98 @@
+---
+interface Props {
+  inline?: boolean;
+  tremor?: boolean;
+}
+
+const { inline = false, tremor = false } = Astro.props;
+const Tag = inline ? "span" : "div";
+---
+
+<Tag
+  class:list={[
+    "book-death-voice",
+    inline ? "book-death-voice--inline" : "book-death-voice--block my-8",
+  ]}
+  data-death-voice
+>
+  {!inline && (
+    <span class="book-death-sigil" aria-hidden="true">
+      †
+    </span>
+  )}
+  <div class:list={["book-death-content", tremor ? "fx-impact" : ""]}>
+    <slot />
+  </div>
+</Tag>
+
+<style>
+  .book-death-voice {
+    font-family: "Newsreader", "Instrument Serif", Georgia, serif;
+    font-variant-caps: small-caps;
+    letter-spacing: 0.11em;
+    font-weight: 500;
+    color: var(--book-ink);
+    text-shadow: 0 0 22px var(--book-death-glow);
+  }
+
+  .book-death-voice--inline {
+    display: inline;
+    padding-inline: 0.15em;
+  }
+
+  .book-death-voice--block {
+    position: relative;
+    padding: 1.35rem 0 1.35rem 1.75rem;
+    line-height: 1.7;
+    font-size: 1.06em;
+  }
+
+  .book-death-voice--block::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--book-ink);
+    transform-origin: top center;
+    transform: scaleY(0);
+    transition:
+      transform 1.15s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 1.2s ease;
+  }
+
+  :global(html:not(.book-motion-ready)) .book-death-voice--block::before,
+  :global(html.quiet-mode) .book-death-voice--block::before,
+  .book-death-voice--block:global(.is-revealed)::before {
+    transform: scaleY(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .book-death-voice--block::before {
+      transform: scaleY(1);
+      transition: none;
+    }
+  }
+
+  .book-death-sigil {
+    position: absolute;
+    left: -0.42rem;
+    top: -0.45rem;
+    padding: 0 0.2rem;
+    background-color: var(--book-bg);
+    font-family: "Space Mono", monospace;
+    font-size: 0.72rem;
+    line-height: 1;
+    color: var(--book-muted);
+    transition: background-color 1.2s ease, color 1.2s ease;
+  }
+
+  .book-death-content :global(p) {
+    margin: 0;
+  }
+
+  .book-death-content :global(p + p) {
+    margin-top: 0.9em;
+  }
+</style>

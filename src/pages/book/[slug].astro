@@ -1,0 +1,1545 @@
+---
+import { getCollection, render } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import MoodShift from "../../components/book/MoodShift.astro";
+import MarginArt from "../../components/book/MarginArt.astro";
+import DeathVoice from "../../components/book/DeathVoice.astro";
+import Silence from "../../components/book/Silence.astro";
+
+export async function getStaticPaths() {
+  const rawEntries = await getCollection("book", ({ data }) => !data.draft);
+  const chapters = rawEntries.sort((a, b) => a.data.chapter - b.data.chapter);
+
+  return chapters.map((entry, index) => ({
+    params: { slug: entry.id },
+    props: {
+      entry,
+      prevChapter: index > 0 ? chapters[index - 1] : null,
+      nextChapter: index < chapters.length - 1 ? chapters[index + 1] : null,
+    },
+  }));
+}
+
+const { entry, prevChapter, nextChapter } = Astro.props;
+const { Content } = await render(entry);
+const {
+  chapter,
+  roman,
+  title,
+  subtitle,
+  synopsis,
+  readingTime,
+  initialTheme = "bone",
+  coverArt,
+  coverCaption,
+  epigraph,
+  epigraphAuthor,
+} = entry.data;
+---
+
+<Layout
+  title={`Ch. ${chapter}: ${title} — Symphony of a Withered World`}
+  description={synopsis}
+  theme={initialTheme}
+  preloadHero={false}
+>
+  <!-- Whisper-Thin 2px Top Reading Progress Bar -->
+  <div
+    class="pointer-events-none fixed inset-x-0 top-0 z-50 h-[2px] w-full overflow-hidden"
+    style="background: var(--book-rule);"
+    aria-hidden="true"
+  >
+    <div
+      id="scroll-progress"
+      class="h-full w-full origin-left scale-x-0 transition-transform duration-150 ease-out"
+      style="background-color: var(--book-ink);"
+    ></div>
+  </div>
+
+  <!-- Ambient Dust/Ash Canvas Layer -->
+  <canvas
+    id="book-dust-canvas"
+    class="pointer-events-none fixed inset-0 z-10 h-full w-full opacity-55 transition-opacity duration-1000"
+    aria-hidden="true"
+  ></canvas>
+
+  <!-- Progressive Optical Depth-of-Field Edge Blur Overlay (center corridor stays razor-sharp) -->
+  <div id="book-dof-lens" class="book-dof-lens is-paused" aria-hidden="true">
+    <div class="book-dof-edge book-dof-edge--top"></div>
+    <div class="book-dof-edge book-dof-edge--bottom"></div>
+    <div class="book-dof-veil"></div>
+  </div>
+
+  <!-- Bleeding Sun Ambient Top-Edge Crimson Veil -->
+  <div id="book-sun-glow" class="book-sun-glow" aria-hidden="true"></div>
+
+  <!-- Minimal Floating Reader Navigation Header (auto-hides on downward scroll) -->
+  <header
+    id="book-reader-header"
+    class="book-reader-header sticky top-0 z-40 border-b"
+    style="border-color: var(--book-rule); background-color: var(--book-bg);"
+  >
+    <div class="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-3.5 md:px-12">
+      <div class="flex items-center gap-4">
+        <a
+          href="/book"
+          class="group inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-opacity hover:opacity-70"
+          style="color: var(--book-ink);"
+        >
+          <span class="inline-block transition-transform group-hover:-translate-x-1">←</span>
+          <span>Contents</span>
+        </a>
+        <span class="font-mono text-xs opacity-30" style="color: var(--book-muted);">/</span>
+        <a
+          href="/#projects"
+          class="hidden font-mono text-[11px] uppercase tracking-[0.2em] transition-opacity hover:opacity-70 sm:inline"
+          style="color: var(--book-muted);"
+        >
+          Portfolio
+        </a>
+      </div>
+
+      <div class="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.22em]" style="color: var(--book-muted);">
+        <span>CH. {String(chapter).padStart(2, "0")}</span>
+        <span class="hidden sm:inline">—</span>
+        <span class="hidden sm:inline" style="color: var(--book-ink);">{title}</span>
+      </div>
+
+      <div class="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em]" style="color: var(--book-muted);">
+        <span id="reader-theme-indicator" class="border px-2 py-0.5" style="border-color: var(--book-rule);">
+          MOOD: {initialTheme.toUpperCase()}
+        </span>
+        <span id="reader-percent-label" class="w-9 text-right tabular-nums">0%</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Reader Body Metadata for Scripts -->
+  <div
+    id="book-chapter-meta"
+    data-slug={entry.id}
+    data-title={title}
+    data-chapter={chapter}
+    data-initial-theme={initialTheme}
+    class="hidden"
+  ></div>
+
+  <main class="relative z-20 pb-36">
+    <!-- Full-Viewport-Height Editorial Chapter Opener Plate -->
+    <section
+      id="chapter-opener"
+      class="relative mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1440px] flex-col justify-between border-b px-6 py-14 md:px-12 md:py-20"
+      style="border-color: var(--book-rule);"
+    >
+      <div class="grid grid-cols-1 items-center gap-12 my-auto lg:grid-cols-12 lg:gap-16">
+        <!-- Chapter Title & Epigraph Column -->
+        <div class:list={[coverArt ? "lg:col-span-7" : "lg:col-span-8 lg:col-start-3 text-center"]}>
+          <div
+            class:list={[
+              "mb-6 flex items-center gap-4 font-mono text-xs uppercase tracking-[0.26em]",
+              !coverArt && "justify-center",
+            ]}
+            style="color: var(--book-muted);"
+          >
+            <span>CHAPTER {roman ?? String(chapter).padStart(2, "0")}</span>
+            <span>//</span>
+            <span>{readingTime ?? "5 MIN READ"}</span>
+          </div>
+
+          <h1
+            id="chapter-opener-title"
+            class="mb-6 font-normal leading-[1.03] tracking-[-0.02em]"
+            style="font-family: 'Newsreader', Georgia, serif; font-size: clamp(2.6rem, 5.5vw, 4.85rem);"
+          >
+            {title}
+          </h1>
+
+          {subtitle && (
+            <p
+              class="mb-10 max-w-2xl italic leading-relaxed"
+              style="font-family: 'Newsreader', Georgia, serif; font-size: clamp(1.2rem, 1.8vw, 1.5rem); color: var(--book-muted);"
+            >
+              {subtitle}
+            </p>
+          )}
+
+          {epigraph && (
+            <blockquote
+              class="mt-10 max-w-xl border-l pl-5 italic"
+              style="border-color: var(--book-rule); font-family: 'Newsreader', Georgia, serif; color: var(--book-muted);"
+            >
+              <p class="text-base leading-relaxed md:text-lg">“{epigraph}”</p>
+              {epigraphAuthor && (
+                <footer class="mt-2 font-mono text-[10px] not-italic uppercase tracking-[0.22em]">
+                  — {epigraphAuthor}
+                </footer>
+              )}
+            </blockquote>
+          )}
+        </div>
+
+        <!-- Optional Cover Art Plate -->
+        {coverArt && (
+          <div class="lg:col-span-5" id="chapter-opener-art">
+            <figure
+              class="mx-auto max-w-md border p-3 lg:mx-0 lg:max-w-none"
+              style="border-color: var(--book-rule); background: var(--book-surface);"
+            >
+              <div class="relative aspect-[4/5] w-full overflow-hidden border" style="border-color: var(--book-rule);">
+                <img
+                  id="chapter-opener-img"
+                  src={coverArt}
+                  alt={coverCaption ?? title}
+                  class="h-full w-full object-cover will-change-transform"
+                />
+              </div>
+              {coverCaption && (
+                <figcaption
+                  class="mt-2.5 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em]"
+                  style="color: var(--book-muted);"
+                >
+                  <span>{coverCaption}</span>
+                </figcaption>
+              )}
+            </figure>
+          </div>
+        )}
+      </div>
+
+      <!-- Scroll Prompt Footer inside Opener Plate -->
+      <div class="mt-12 flex items-center justify-between pt-6 font-mono text-[10px] uppercase tracking-[0.24em]" style="border-top: 1px solid var(--book-rule); color: var(--book-muted);">
+        <span>SYMPHONY OF A WITHERED WORLD</span>
+        <span class="inline-flex items-center gap-3">
+          <span>SCROLL TO ENTER THE TEXT</span>
+          <span class="book-scroll-hairline" aria-hidden="true"></span>
+        </span>
+      </div>
+    </section>
+
+    <!-- Desktop Left-Margin Scene Spine (populated dynamically from [data-scene]) -->
+    <nav id="book-scene-spine" class="book-scene-spine" aria-label="Chapter scenes"></nav>
+
+    <!-- Sacred 3-Column Asymmetric Editorial Reading Grid (1fr minmax(auto, 61ch) 1fr) -->
+    <article class="book-editorial-grid pt-16 md:pt-24">
+      <div
+        class="book-prose"
+        id="book-prose-column"
+        data-kinetic-chapter={chapter === 1 ? "true" : undefined}
+      >
+        <Content
+          components={{
+            MoodShift,
+            MarginArt,
+            DeathVoice,
+            Silence,
+          }}
+        />
+      </div>
+    </article>
+
+    <!-- End-of-Chapter Finis & Next/Prev Chapter Navigation -->
+    <footer id="chapter-footer" class="mx-auto mt-28 max-w-4xl px-6 md:px-12">
+      <div class="mb-14 flex flex-col items-center justify-center gap-3 text-center">
+        <span class="font-mono text-xs tracking-[0.4em]" style="color: var(--book-muted);">
+          · &nbsp;  finis chapter {roman ?? chapter} &nbsp; ·
+        </span>
+      </div>
+
+      <nav
+        class="grid grid-cols-1 gap-6 border-t pt-12 sm:grid-cols-2"
+        style="border-color: var(--book-rule);"
+        aria-label="Chapter navigation"
+      >
+        {prevChapter ? (
+          <a
+            href={`/book/${prevChapter.id}`}
+            class="group flex flex-col justify-between border p-6 transition-all hover:opacity-85"
+            style="border-color: var(--book-rule); background: var(--book-surface);"
+          >
+            <span class="font-mono text-[10px] uppercase tracking-[0.22em]" style="color: var(--book-muted);">
+              ← PREVIOUS MOVEMENT // CH. {String(prevChapter.data.chapter).padStart(2, "0")}
+            </span>
+            <span
+              class="mt-3 text-2xl font-normal transition-transform group-hover:-translate-x-1"
+              style="font-family: 'Newsreader', Georgia, serif;"
+            >
+              {prevChapter.data.title}
+            </span>
+          </a>
+        ) : (
+          <a
+            href="/book"
+            class="group flex flex-col justify-between border p-6 transition-all hover:opacity-85"
+            style="border-color: var(--book-rule); background: var(--book-surface);"
+          >
+            <span class="font-mono text-[10px] uppercase tracking-[0.22em]" style="color: var(--book-muted);">
+              ← RETURN TO FOLIO COVER
+            </span>
+            <span
+              class="mt-3 text-2xl italic font-normal"
+              style="font-family: 'Newsreader', Georgia, serif;"
+            >
+              Table of Contents
+            </span>
+          </a>
+        )}
+
+        {nextChapter ? (
+          <a
+            href={`/book/${nextChapter.id}`}
+            class="group flex flex-col justify-between border p-6 text-right transition-all hover:opacity-85"
+            style="border-color: var(--book-rule); background: var(--book-surface);"
+          >
+            <span class="font-mono text-[10px] uppercase tracking-[0.22em]" style="color: var(--book-muted);">
+              NEXT MOVEMENT // CH. {String(nextChapter.data.chapter).padStart(2, "0")} →
+            </span>
+            <span
+              class="mt-3 text-2xl font-normal transition-transform group-hover:translate-x-1"
+              style="font-family: 'Newsreader', Georgia, serif;"
+            >
+              {nextChapter.data.title}
+            </span>
+          </a>
+        ) : (
+          <a
+            href="/book"
+            class="group flex flex-col justify-between border p-6 text-right transition-all hover:opacity-85"
+            style="border-color: var(--book-rule); background: var(--book-surface);"
+          >
+            <span class="font-mono text-[10px] uppercase tracking-[0.22em]" style="color: var(--book-muted);">
+              END OF AVAILABLE MOVEMENTS →
+            </span>
+            <span
+              class="mt-3 text-2xl italic font-normal"
+              style="font-family: 'Newsreader', Georgia, serif;"
+            >
+              Return to Book Cover
+            </span>
+          </a>
+        )}
+      </nav>
+    </footer>
+  </main>
+
+  <!-- Floating Reader Controls Dock (Font Size + Quiet Mode) -->
+  <div class="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+    <div
+      class="flex items-center border font-mono text-[10px] uppercase tracking-[0.16em]"
+      style="background-color: var(--book-bg); color: var(--book-ink); border-color: var(--book-rule); opacity: 0.92;"
+      role="group"
+      aria-label="Text size"
+    >
+      <button
+        id="book-font-dec"
+        type="button"
+        class="cursor-pointer px-2.5 py-2 transition-opacity hover:opacity-65"
+        title="Decrease text size"
+        aria-label="Decrease text size"
+      >
+        A−
+      </button>
+      <span class="h-3 w-px opacity-25" style="background-color: var(--book-ink);" aria-hidden="true"></span>
+      <button
+        id="book-font-inc"
+        type="button"
+        class="cursor-pointer px-2.5 py-2 transition-opacity hover:opacity-65"
+        title="Increase text size"
+        aria-label="Increase text size"
+      >
+        A+
+      </button>
+    </div>
+
+    <button
+      id="book-quiet-toggle"
+      type="button"
+      class="flex cursor-pointer items-center gap-2.5 border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-all hover:opacity-100"
+      style="background-color: var(--book-bg); color: var(--book-ink); border-color: var(--book-rule); opacity: 0.92;"
+      aria-pressed="false"
+      title="Toggle ambient particles and scroll animations"
+    >
+      <span id="book-quiet-dot" class="h-1.5 w-1.5 rounded-full" style="background-color: var(--book-accent);"></span>
+      <span id="book-quiet-text">QUIET MODE: OFF</span>
+    </button>
+  </div>
+
+  <script>
+    import gsap from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    const BOOKMARK_KEY = "symphony-withered-world:bookmark";
+    const QUIET_KEY = "symphony-withered-world:quiet";
+    const FONT_SCALE_KEY = "symphony-withered-world:font-scale";
+
+    let cachedMaxScroll = Math.max(
+      1,
+      document.documentElement.scrollHeight - window.innerHeight
+    );
+    function refreshMaxScroll() {
+      cachedMaxScroll = Math.max(
+        1,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
+    }
+
+    // 0. Reader Font-Size Control (persisted to localStorage)
+    const fontDecBtn = document.getElementById("book-font-dec");
+    const fontIncBtn = document.getElementById("book-font-inc");
+    let fontScale = 1;
+    try {
+      const savedScale = Number(localStorage.getItem(FONT_SCALE_KEY));
+      if (!Number.isNaN(savedScale) && savedScale >= 0.86 && savedScale <= 1.24) {
+        fontScale = savedScale;
+      }
+    } catch {}
+
+    function applyFontScale(scale: number, refreshTriggers = false) {
+      fontScale = Math.min(1.22, Math.max(0.88, Number(scale.toFixed(2))));
+      document.documentElement.style.setProperty("--book-font-scale", String(fontScale));
+      try {
+        localStorage.setItem(FONT_SCALE_KEY, String(fontScale));
+      } catch {}
+      if (refreshTriggers) {
+        window.requestAnimationFrame(() => {
+          ScrollTrigger.refresh();
+          refreshMaxScroll();
+        });
+      }
+    }
+    applyFontScale(fontScale, false);
+    fontDecBtn?.addEventListener("click", () => applyFontScale(fontScale - 0.06, true));
+    fontIncBtn?.addEventListener("click", () => applyFontScale(fontScale + 0.06, true));
+
+    // 0b. Auto-Hide Reading Header on Downward Scroll (reveals on scroll-up or top hover)
+    const readerHeader = document.getElementById("book-reader-header");
+    let lastScrollY = window.scrollY;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!readerHeader) return;
+        const curr = window.scrollY;
+        const delta = curr - lastScrollY;
+        if (curr < 110) {
+          readerHeader.classList.remove("is-hidden");
+        } else if (delta > 6) {
+          readerHeader.classList.add("is-hidden");
+        } else if (delta < -6) {
+          readerHeader.classList.remove("is-hidden");
+        }
+        lastScrollY = curr;
+      },
+      { passive: true }
+    );
+    window.addEventListener(
+      "pointermove",
+      (ev) => {
+        if (ev.clientY < 64 && readerHeader?.classList.contains("is-hidden")) {
+          readerHeader.classList.remove("is-hidden");
+        }
+      },
+      { passive: true }
+    );
+
+    const metaEl = document.getElementById("book-chapter-meta");
+    const slug = metaEl?.dataset.slug ?? "";
+    const title = metaEl?.dataset.title ?? "";
+    const chapter = Number(metaEl?.dataset.chapter ?? 1);
+    const initialTheme = metaEl?.dataset.initialTheme ?? "bone";
+
+    const themeIndicator = document.getElementById("reader-theme-indicator");
+    const percentLabel = document.getElementById("reader-percent-label");
+
+    function setTheme(theme: string) {
+      document.body.dataset.theme = theme;
+      if (themeIndicator) {
+        themeIndicator.textContent = `MOOD: ${theme.toUpperCase()}`;
+      }
+    }
+
+    // Ensure initial theme is applied
+    setTheme(initialTheme);
+
+    // 1. Quiet Mode State & Toggle
+    const quietBtn = document.getElementById("book-quiet-toggle");
+    const quietText = document.getElementById("book-quiet-text");
+    const quietDot = document.getElementById("book-quiet-dot");
+
+    let isQuiet = false;
+    try {
+      isQuiet = localStorage.getItem(QUIET_KEY) === "true";
+    } catch {}
+
+    function applyQuietState(quiet: boolean) {
+      document.body.dataset.quiet = quiet ? "true" : "false";
+      document.documentElement.classList.toggle("quiet-mode", quiet);
+      if (quietBtn) quietBtn.setAttribute("aria-pressed", String(quiet));
+      if (quietText) quietText.textContent = quiet ? "QUIET MODE: ON" : "QUIET MODE: OFF";
+      if (quietDot) quietDot.style.opacity = quiet ? "0.3" : "1";
+    }
+    applyQuietState(isQuiet);
+
+    let onQuietDisable: (() => void) | null = null;
+
+    quietBtn?.addEventListener("click", () => {
+      isQuiet = !isQuiet;
+      try {
+        localStorage.setItem(QUIET_KEY, String(isQuiet));
+      } catch {}
+      applyQuietState(isQuiet);
+      if (!isQuiet) onQuietDisable?.();
+    });
+
+    // 2. <MoodShift /> GSAP ScrollTrigger Engine
+    // Crosses middle of viewport (start: "top 55%") and reverts cleanly when scrolling back up
+    const moodMarkers = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-mood-shift]")
+    );
+
+    moodMarkers.forEach((marker, idx) => {
+      const targetTheme = marker.dataset.moodShift || initialTheme;
+      const previousTheme =
+        idx === 0
+          ? initialTheme
+          : moodMarkers[idx - 1].dataset.moodShift || initialTheme;
+
+      ScrollTrigger.create({
+        trigger: marker,
+        start: "top 55%",
+        onEnter: () => setTheme(targetTheme),
+        onLeaveBack: () => setTheme(previousTheme),
+      });
+    });
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let motionInitialized = false;
+
+    function initMotion() {
+      if (motionInitialized || reducedMotion) return;
+      motionInitialized = true;
+
+      // Mark document ready so CSS enables motion choreography cleanly
+      document.documentElement.classList.add("book-motion-ready");
+
+      const proseEl = document.getElementById("book-prose-column");
+      const isKineticChapter = proseEl?.dataset.kineticChapter === "true";
+
+      // 1. Peripheral wake-up (zero per-paragraph blur; non-kinetic chapters + DeathVoice + h2)
+      const wakeTargets = isKineticChapter
+        ? ".book-prose > [data-death-voice], .book-prose > h2"
+        : ".book-prose > p, .book-prose > h2, .book-prose > [data-death-voice]";
+
+      gsap.utils.toArray<HTMLElement>(wakeTargets).forEach((el) => {
+        gsap.to(el, {
+          opacity: 1,
+          y: 0,
+          duration: 0.85,
+          ease: "power2.out",
+          clearProps: "transform,willChange",
+          onComplete: () => {
+            el.classList.add("is-revealed");
+          },
+          scrollTrigger: {
+            trigger: el,
+            start: "top 90%",
+            once: true,
+          },
+        });
+      });
+
+      // 1b. Scene headings (h2) hairline draw-in
+      gsap.utils.toArray<HTMLElement>(".book-prose h2").forEach((h2) => {
+        ScrollTrigger.create({
+          trigger: h2,
+          start: "top 78%",
+          once: true,
+          onEnter: () => h2.classList.add("is-awake"),
+        });
+      });
+
+      // 1c. Fade #book-dof-lens strictly while inside #book-prose-column (crisp opener & footer)
+      const dofLens = document.getElementById("book-dof-lens");
+      if (dofLens && proseEl) {
+        ScrollTrigger.create({
+          trigger: proseEl,
+          start: "top 58%",
+          end: "bottom 72%",
+          onEnter: () => dofLens.classList.remove("is-paused"),
+          onLeave: () => dofLens.classList.add("is-paused"),
+          onEnterBack: () => dofLens.classList.remove("is-paused"),
+          onLeaveBack: () => dofLens.classList.add("is-paused"),
+        });
+      }
+
+      // 1d. Bleeding Sun ambient top-edge crimson glow
+      const sunGlow = document.getElementById("book-sun-glow");
+      if (sunGlow) {
+        document.querySelectorAll<HTMLElement>('[data-ambient="bleeding-sun"]').forEach((el) => {
+          ScrollTrigger.create({
+            trigger: el,
+            start: "top 80%",
+            end: "bottom 20%",
+            onEnter: () => sunGlow.classList.add("is-active"),
+            onLeave: () => sunGlow.classList.remove("is-active"),
+            onEnterBack: () => sunGlow.classList.add("is-active"),
+            onLeaveBack: () => sunGlow.classList.remove("is-active"),
+          });
+        });
+      }
+
+      // 1e. Desktop Left-Margin Scene Spine (built from [data-scene] anchors)
+      const spineEl = document.getElementById("book-scene-spine");
+      const sceneMarkers = Array.from(document.querySelectorAll<HTMLElement>("[data-scene]"));
+      if (spineEl && proseEl && sceneMarkers.length > 0) {
+        const spineButtons: HTMLButtonElement[] = [];
+        sceneMarkers.forEach((marker, idx) => {
+          const label = marker.dataset.scene ?? `SCENE ${idx + 1}`;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "book-scene-spine__btn";
+          btn.innerHTML = `<span class="book-scene-spine__tick" aria-hidden="true"></span><span>${label}</span>`;
+          btn.addEventListener("click", () => {
+            const offsetPx = Math.round(window.innerHeight * 0.25);
+            const lenis = (
+              window as unknown as {
+                __lenis?: { scrollTo: (el: HTMLElement, opts?: Record<string, unknown>) => void };
+              }
+            ).__lenis;
+            if (lenis) {
+              lenis.scrollTo(marker, { offset: -offsetPx, duration: 1.0 });
+            } else {
+              const targetTop = marker.getBoundingClientRect().top + window.scrollY - offsetPx;
+              window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+            }
+          });
+          spineEl.appendChild(btn);
+          spineButtons.push(btn);
+
+          ScrollTrigger.create({
+            trigger: marker,
+            start: "top 60%",
+            onEnter: () => {
+              spineButtons.forEach((b, i) => b.classList.toggle("is-active", i === idx));
+            },
+            onLeaveBack: () => {
+              const prev = Math.max(0, idx - 1);
+              spineButtons.forEach((b, i) => b.classList.toggle("is-active", i === prev));
+            },
+          });
+        });
+        spineButtons[0]?.classList.add("is-active");
+
+        ScrollTrigger.create({
+          trigger: proseEl,
+          start: "top 55%",
+          end: "bottom 65%",
+          onEnter: () => spineEl.classList.add("is-visible"),
+          onLeave: () => spineEl.classList.remove("is-visible"),
+          onEnterBack: () => spineEl.classList.add("is-visible"),
+          onLeaveBack: () => spineEl.classList.remove("is-visible"),
+        });
+      }
+
+      // 2. Micro-typographic beats & key underline sweeps (one-shot on entry)
+      gsap.utils.toArray<HTMLElement>(".fx-key").forEach((el) => {
+        ScrollTrigger.create({
+          trigger: el,
+          start: isKineticChapter ? "top 64%" : "top 80%",
+          once: true,
+          onEnter: () => el.classList.add("is-awake"),
+        });
+      });
+
+      gsap.utils.toArray<HTMLElement>(".fx-highlight").forEach((el) => {
+        ScrollTrigger.create({
+          trigger: el,
+          start: isKineticChapter ? "top 68%" : "top 78%",
+          once: true,
+          onEnter: () => el.classList.add("is-awake"),
+        });
+      });
+
+      gsap.utils.toArray<HTMLElement>(".fx-stretch, .fx-chime").forEach((el) => {
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 80%",
+          once: true,
+          onEnter: () => {
+            el.classList.add("is-awake");
+            if (
+              el.classList.contains("fx-chime") &&
+              !document.documentElement.classList.contains("quiet-mode")
+            ) {
+              const ring = document.createElement("span");
+              ring.className = "fx-chime-ring";
+              ring.setAttribute("aria-hidden", "true");
+              el.appendChild(ring);
+              window.setTimeout(() => ring.remove(), 1600);
+            }
+          },
+        });
+      });
+
+      gsap.utils.toArray<HTMLElement>(".fx-ghost").forEach((el) => {
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 78%",
+          once: true,
+          onEnter: () => el.classList.add("is-awake"),
+        });
+      });
+
+      // 3. .fx-cleave — progressive split into left/seam/right + weighted one-shot tear on scroll
+      gsap.utils.toArray<HTMLElement>(".fx-cleave").forEach((el) => {
+        const raw = (el.textContent ?? "").trim();
+        if (!raw || el.dataset.cleaveReady === "true") return;
+        el.dataset.cleaveReady = "true";
+        el.setAttribute("aria-label", raw);
+
+        const words = raw.split(/\s+/);
+        let leftText = "";
+        let rightText = "";
+        if (words.length >= 2) {
+          const mid = Math.ceil(words.length / 2);
+          leftText = words.slice(0, mid).join(" ");
+          rightText = words.slice(mid).join(" ");
+        } else {
+          const midChar = Math.ceil(raw.length / 2);
+          leftText = raw.slice(0, midChar);
+          rightText = raw.slice(midChar);
+        }
+
+        const leftSpan = document.createElement("span");
+        leftSpan.className = "fx-cleave-l";
+        leftSpan.setAttribute("aria-hidden", "true");
+        leftSpan.textContent = leftText;
+
+        const seamSpan = document.createElement("span");
+        seamSpan.className = "fx-cleave-seam";
+        seamSpan.setAttribute("aria-hidden", "true");
+
+        const rightSpan = document.createElement("span");
+        rightSpan.className = "fx-cleave-r";
+        rightSpan.setAttribute("aria-hidden", "true");
+        rightSpan.textContent = rightText;
+
+        el.textContent = "";
+        el.append(leftSpan, seamSpan, rightSpan);
+
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 80%",
+          once: true,
+          onEnter: () => {
+            if (document.documentElement.classList.contains("quiet-mode")) return;
+            const tl = gsap.timeline({
+              onComplete: () => {
+                gsap.set([leftSpan, rightSpan, seamSpan], { clearProps: "all" });
+                el.classList.add("is-awake");
+              },
+            });
+            tl.to(leftSpan, { x: "-0.16em", rotation: -0.6, duration: 0.38, ease: "power3.out" }, 0)
+              .to(rightSpan, { x: "0.16em", rotation: 0.6, duration: 0.38, ease: "power3.out" }, 0)
+              .to(seamSpan, { opacity: 0.45, scaleY: 1, duration: 0.32, ease: "power2.out" }, 0)
+              .to(leftSpan, { x: "-0.05em", rotation: 0, duration: 0.75, ease: "power2.out" }, 0.38)
+              .to(rightSpan, { x: "0.05em", rotation: 0, duration: 0.75, ease: "power2.out" }, 0.38)
+              .to(seamSpan, { opacity: 0.14, scaleY: 0.85, duration: 0.75, ease: "power2.out" }, 0.38);
+          },
+        });
+      });
+
+      // 4. .fx-impact — weighted one-shot drop & damped settle (no bounce)
+      const impactLocks = new WeakMap<HTMLElement, number>();
+      function triggerImpact(el: HTMLElement) {
+        if (document.documentElement.classList.contains("quiet-mode")) return;
+        const now = performance.now();
+        if (now - (impactLocks.get(el) ?? 0) < 500) return;
+        impactLocks.set(el, now);
+
+        gsap.killTweensOf(el, "y,scaleY");
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.set(el, { clearProps: "y,scaleY" });
+          },
+        });
+        tl.fromTo(
+          el,
+          { y: -2.5, scaleY: 1.01 },
+          { y: 2.5, scaleY: 0.96, duration: 0.14, ease: "power4.in" }
+        ).to(el, {
+          y: 0,
+          scaleY: 1,
+          duration: 0.65,
+          ease: "power3.out",
+        });
+      }
+
+      gsap.utils.toArray<HTMLElement>(".fx-impact").forEach((el) => {
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 82%",
+          once: true,
+          onEnter: () => triggerImpact(el),
+        });
+        el.addEventListener("pointerenter", () => triggerImpact(el));
+        el.addEventListener("click", () => triggerImpact(el));
+      });
+
+      // 5. .fx-slash — interactive blade glint & shear settle for moments of cutting
+      const slashLocks = new WeakMap<HTMLElement, number>();
+      function triggerSlash(el: HTMLElement) {
+        if (document.documentElement.classList.contains("quiet-mode")) return;
+        const now = performance.now();
+        if (now - (slashLocks.get(el) ?? 0) < 450) return;
+        slashLocks.set(el, now);
+
+        const label = el.querySelector<HTMLElement>(".fx-slash-label");
+        const blade = el.querySelector<HTMLElement>(".fx-slash-blade");
+        const threadTop = el.querySelector<HTMLElement>(".fx-thread-top");
+        const threadBottom = el.querySelector<HTMLElement>(".fx-thread-bottom");
+        if (!label || !blade) return;
+
+        gsap.killTweensOf([label, blade, threadTop, threadBottom].filter(Boolean));
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.set(label, { clearProps: "transform" });
+          },
+        });
+        tl.fromTo(
+          blade,
+          { scaleX: 0, opacity: 0.95 },
+          { scaleX: 1, opacity: 0.85, duration: 0.22, ease: "power4.out" },
+          0
+        )
+          .fromTo(
+            label,
+            { skewX: -6, x: 2.5 },
+            { skewX: 0, x: 0, duration: 0.55, ease: "power3.out" },
+            0.05
+          )
+          .to(blade, { opacity: 0.26, duration: 0.65, ease: "power2.out" }, 0.22);
+
+        if (threadTop && threadBottom) {
+          tl.fromTo(
+            threadTop,
+            { y: 0, scaleY: 1, opacity: 0.85 },
+            { y: -14, scaleY: 0.55, opacity: 0.18, duration: 0.85, ease: "power3.out" },
+            0.08
+          ).fromTo(
+            threadBottom,
+            { y: 0, scaleY: 1, opacity: 0.85 },
+            { y: 12, scaleY: 0.4, opacity: 0.12, duration: 0.85, ease: "power3.out" },
+            0.08
+          );
+        }
+      }
+
+      gsap.utils.toArray<HTMLElement>(".fx-slash").forEach((el) => {
+        const raw = (el.textContent ?? "").trim();
+        if (!raw || el.dataset.slashReady === "true") return;
+        el.dataset.slashReady = "true";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.className = "fx-slash-label";
+        labelSpan.textContent = raw;
+
+        const bladeSpan = document.createElement("span");
+        bladeSpan.className = "fx-slash-blade";
+        bladeSpan.setAttribute("aria-hidden", "true");
+
+        el.textContent = "";
+        el.append(labelSpan, bladeSpan);
+
+        if (el.dataset.thread === "true") {
+          el.classList.add("fx-thread-wrap");
+          const tTop = document.createElement("span");
+          tTop.className = "fx-thread-top";
+          tTop.setAttribute("aria-hidden", "true");
+          const tBot = document.createElement("span");
+          tBot.className = "fx-thread-bottom";
+          tBot.setAttribute("aria-hidden", "true");
+          el.append(tTop, tBot);
+        }
+
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 80%",
+          once: true,
+          onEnter: () => triggerSlash(el),
+        });
+        el.addEventListener("pointerenter", () => triggerSlash(el));
+        el.addEventListener("click", () => triggerSlash(el));
+      });
+
+      // 6. Chapter Opener Plate gentle entrance & fade/scroll into prose
+      const openerTitle = document.getElementById("chapter-opener-title");
+      const openerArt = document.getElementById("chapter-opener-art");
+      const openerImg = document.getElementById("chapter-opener-img");
+      const openerSection = document.getElementById("chapter-opener");
+
+      if (openerImg) {
+        gsap.fromTo(
+          openerImg,
+          { scale: 1.045 },
+          { scale: 1, duration: 1.8, ease: "power2.out", clearProps: "transform" }
+        );
+      }
+
+      if (openerSection && openerTitle) {
+        gsap.to(openerTitle, {
+          yPercent: -18,
+          opacity: 0.25,
+          ease: "none",
+          scrollTrigger: {
+            trigger: openerSection,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
+
+      if (openerSection && openerArt) {
+        gsap.to(openerArt, {
+          yPercent: -10,
+          scale: 0.97,
+          opacity: 0.35,
+          ease: "none",
+          scrollTrigger: {
+            trigger: openerSection,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
+
+      // 7. <MarginArt /> GSAP Parallax Drift & Fade-In
+      const marginArts = document.querySelectorAll<HTMLElement>("[data-margin-art]");
+      marginArts.forEach((aside) => {
+        const fig = aside.querySelector<HTMLElement>(".book-margin-figure");
+        if (!fig) return;
+
+        gsap.fromTo(
+          fig,
+          { opacity: 0, y: 36 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1.05,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: aside,
+              start: "top 82%",
+              toggleActions: "play none none reverse",
+            },
+          }
+        );
+
+        // Subtle desktop parallax drift while scrolling past the paragraph
+        gsap.fromTo(
+          fig,
+          { yPercent: 8 },
+          {
+            yPercent: -12,
+            ease: "none",
+            scrollTrigger: {
+              trigger: aside,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: true,
+            },
+          }
+        );
+      });
+
+      // Kinetic inline spans (data-kinetic="wither" | "expand")
+      document.querySelectorAll<HTMLElement>('[data-kinetic="wither"]').forEach((span) => {
+        gsap.fromTo(
+          span,
+          { opacity: 1, letterSpacing: "0em", filter: "blur(0px)" },
+          {
+            opacity: 0.42,
+            letterSpacing: "0.06em",
+            filter: "blur(0.6px)",
+            ease: "none",
+            scrollTrigger: {
+              trigger: span,
+              start: "top 65%",
+              end: "top 25%",
+              scrub: true,
+            },
+          }
+        );
+      });
+
+      document.querySelectorAll<HTMLElement>('[data-kinetic="expand"]').forEach((span) => {
+        gsap.fromTo(
+          span,
+          { letterSpacing: "0em" },
+          {
+            letterSpacing: "0.08em",
+            ease: "none",
+            scrollTrigger: {
+              trigger: span,
+              start: "top 75%",
+              end: "top 30%",
+              scrub: true,
+            },
+          }
+        );
+      });
+
+      // 8. Action & movement emphasis (rise, fall, surge, cleave) — smooth one-shot
+      const actionMap: Record<string, { from: gsap.TweenVars; to: gsap.TweenVars }> = {
+        rise: {
+          from: { y: 9, opacity: 0.45 },
+          to: { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
+        },
+        fall: {
+          from: { y: -7, opacity: 0.5 },
+          to: { y: 0, opacity: 1, duration: 0.75, ease: "power3.out" },
+        },
+        surge: {
+          from: { x: -10, opacity: 0.45 },
+          to: { x: 0, opacity: 1, duration: 0.65, ease: "power3.out" },
+        },
+        cleave: {
+          from: { skewX: -8, x: -6, opacity: 0.5 },
+          to: { skewX: 0, x: 0, opacity: 1, duration: 0.55, ease: "power3.out" },
+        },
+      };
+
+      document.querySelectorAll<HTMLElement>("[data-action]").forEach((el) => {
+        const kind = el.dataset.action ?? "";
+        const preset = actionMap[kind];
+        if (!preset) return;
+
+        el.classList.add("fx-move");
+        gsap.fromTo(el, preset.from, {
+          ...preset.to,
+          clearProps: "transform",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 84%",
+            once: true,
+          },
+        });
+      });
+
+      // 9. Chapter 1 Kinetic Typography Engine (scattered letters, drifting/waving words, rising visual lines)
+      if (isKineticChapter && proseEl) {
+        void initKineticChapter(proseEl);
+      }
+    }
+
+    function seededRandom(seed: number): number {
+      const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+      return (x - Math.floor(x)) * 2 - 1;
+    }
+
+    function splitTextIntoWords(root: HTMLElement, wordClass: string) {
+      const atomicSelector =
+        ".fx-scatter, .fx-cleave, .fx-slash, .fx-impact, .fx-ghost, [data-no-split]";
+      const nodes = Array.from(root.childNodes);
+
+      for (const node of nodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent ?? "";
+          if (!text) continue;
+          if (!/\S/.test(text)) continue;
+
+          const frag = document.createDocumentFragment();
+          const parts = text.split(/(\s+)/);
+          for (const part of parts) {
+            if (!part) continue;
+            if (/^\s+$/.test(part)) {
+              frag.appendChild(document.createTextNode(part));
+            } else {
+              const span = document.createElement("span");
+              span.className = wordClass;
+              span.textContent = part;
+              frag.appendChild(span);
+            }
+          }
+          node.parentNode?.replaceChild(frag, node);
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as HTMLElement;
+          if (el.matches(atomicSelector)) continue;
+          splitTextIntoWords(el, wordClass);
+        }
+      }
+    }
+
+    async function initKineticChapter(proseEl: HTMLElement) {
+      const fontReady =
+        document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+      await Promise.race([
+        fontReady,
+        new Promise<void>((resolve) => window.setTimeout(resolve, 300)),
+      ]);
+
+      const scaleRadius = window.innerWidth < 640 ? 0.45 : 1;
+
+      // A. .fx-scatter — characters scatter in space and assemble into words as you scroll
+      proseEl.querySelectorAll<HTMLElement>(".fx-scatter").forEach((el, sIdx) => {
+        const raw = (el.textContent ?? "").trim();
+        if (!raw || el.dataset.scatterReady === "true") return;
+        el.dataset.scatterReady = "true";
+        el.setAttribute("aria-label", raw);
+
+        const dir = el.dataset.scatterDir === "fall" ? "fall" : "burst";
+        const frag = document.createDocumentFragment();
+        const chars: HTMLElement[] = [];
+
+        const parts = raw.split(/(\s+)/);
+        for (const part of parts) {
+          if (!part) continue;
+          if (/^\s+$/.test(part)) {
+            frag.appendChild(document.createTextNode(part));
+          } else {
+            const wordSpan = document.createElement("span");
+            wordSpan.className = "fx-word";
+            wordSpan.setAttribute("aria-hidden", "true");
+            for (const ch of Array.from(part)) {
+              const charSpan = document.createElement("span");
+              charSpan.className = "fx-char";
+              charSpan.textContent = ch;
+              wordSpan.appendChild(charSpan);
+              chars.push(charSpan);
+            }
+            frag.appendChild(wordSpan);
+          }
+        }
+
+        el.textContent = "";
+        el.appendChild(frag);
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: el,
+            start: "top 96%",
+            end: "top 58%",
+            scrub: 0.35,
+            fastScrollEnd: true,
+          },
+        });
+
+        chars.forEach((charEl, idx) => {
+          const code = charEl.textContent?.charCodeAt(0) ?? 65;
+          const base = sIdx * 101 + idx;
+          const rx = seededRandom(base * 17 + code * 3);
+          const ry = seededRandom(base * 31 + code * 7);
+          const rr = seededRandom(base * 13 + code * 11);
+
+          const fromVars =
+            dir === "fall"
+              ? {
+                  x: rx * 28 * scaleRadius,
+                  y: -(18 + Math.abs(ry) * 34),
+                  rotation: rr * 14,
+                  scale: 0.88,
+                  opacity: 0.08,
+                }
+              : {
+                  x: rx * 38 * scaleRadius,
+                  y: (ry * 26 + 18) * scaleRadius,
+                  rotation: rr * 18,
+                  scale: 0.85,
+                  opacity: 0.08,
+                };
+
+          tl.fromTo(
+            charEl,
+            fromVars,
+            {
+              x: 0,
+              y: 0,
+              rotation: 0,
+              scale: 1,
+              opacity: 1,
+              ease: "power2.out",
+            },
+            idx * 0.006
+          );
+        });
+      });
+
+      // B. .fx-word-drift — words drift organically from surrounding space into crisp prose
+      proseEl.querySelectorAll<HTMLElement>("p.fx-word-drift").forEach((p, pIdx) => {
+        if (p.dataset.kineticReady === "true") return;
+        p.dataset.kineticReady = "true";
+
+        splitTextIntoWords(p, "fx-kword");
+        const tokens = Array.from(
+          p.querySelectorAll<HTMLElement>(
+            ".fx-kword, .fx-cleave, .fx-slash, .fx-impact, .fx-ghost"
+          )
+        ).filter((tok) => !tok.parentElement?.closest(".fx-cleave, .fx-slash, .fx-impact, .fx-ghost"));
+
+        if (!tokens.length) return;
+        const isAsh = p.dataset.drift === "ash";
+        const wordScale = window.innerWidth < 640 ? 0.5 : 1;
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: p,
+            start: "top 95%",
+            end: "top 60%",
+            scrub: 0.35,
+            fastScrollEnd: true,
+          },
+        });
+
+        const len = Math.max(1, tokens.length - 1);
+        tokens.forEach((tok, idx) => {
+          const seed = pIdx * 137 + idx;
+          const rx = seededRandom(seed * 23 + 11);
+          const ry = seededRandom(seed * 29 + 5);
+          const rr = seededRandom(seed * 19 + 3);
+
+          const fromVars = isAsh
+            ? {
+                x: rx * 18 * wordScale,
+                y: -(6 + Math.abs(ry) * 8),
+                rotation: rr * 3,
+                opacity: 0.16,
+              }
+            : {
+                x: rx * 22 * wordScale,
+                y: (6 + Math.abs(ry) * 8) * wordScale,
+                rotation: rr * 3.5,
+                opacity: 0.16,
+              };
+
+          tl.fromTo(
+            tok,
+            fromVars,
+            {
+              x: 0,
+              y: 0,
+              rotation: 0,
+              opacity: 1,
+              ease: "power2.out",
+            },
+            (idx / len) * 0.35
+          );
+        });
+      });
+
+      // C. .fx-word-wave — words ride a melodic sine arc before settling flat (bounded to avoid line collisions)
+      proseEl.querySelectorAll<HTMLElement>("p.fx-word-wave").forEach((p) => {
+        if (p.dataset.kineticReady === "true") return;
+        p.dataset.kineticReady = "true";
+
+        splitTextIntoWords(p, "fx-kword");
+        const tokens = Array.from(
+          p.querySelectorAll<HTMLElement>(
+            ".fx-kword, .fx-cleave, .fx-slash, .fx-impact, .fx-ghost"
+          )
+        ).filter((tok) => !tok.parentElement?.closest(".fx-cleave, .fx-slash, .fx-impact, .fx-ghost"));
+
+        if (!tokens.length) return;
+        const wordScale = window.innerWidth < 640 ? 0.5 : 1;
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: p,
+            start: "top 95%",
+            end: "top 60%",
+            scrub: 0.35,
+            fastScrollEnd: true,
+          },
+        });
+
+        const len = Math.max(1, tokens.length - 1);
+        tokens.forEach((tok, idx) => {
+          tl.fromTo(
+            tok,
+            {
+              x: Math.cos(idx * 0.4) * 6 * wordScale,
+              y: Math.sin(idx * 0.65) * 5 + 7,
+              opacity: 0.18,
+            },
+            {
+              x: 0,
+              y: 0,
+              opacity: 1,
+              ease: "sine.out",
+            },
+            (idx / len) * 0.35
+          );
+        });
+      });
+
+      // D. Visual lines rising cleanly into place on remaining standard Chapter 1 paragraphs
+      const allParas = Array.from(proseEl.querySelectorAll<HTMLElement>(":scope > p"));
+      allParas.forEach((p, idx) => {
+        if (p.dataset.kineticReady === "true") return;
+        if (p.classList.contains("fx-word-drift") || p.classList.contains("fx-word-wave")) return;
+
+        // First paragraph keeps native ::first-letter drop cap intact while rising cleanly (one-shot)
+        if (idx === 0) {
+          p.dataset.kineticReady = "true";
+          gsap.fromTo(
+            p,
+            { y: 18, opacity: 0.16 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.68,
+              ease: "power2.out",
+              clearProps: "transform",
+              scrollTrigger: {
+                trigger: p,
+                start: "top 91%",
+                once: true,
+              },
+            }
+          );
+          return;
+        }
+
+        // Pure single-scatter paragraphs (e.g. "Or so she thought.") are driven by .fx-scatter
+        const scatterOnly =
+          p.children.length === 1 &&
+          p.firstElementChild?.classList.contains("fx-scatter") &&
+          (p.textContent ?? "").trim() === (p.firstElementChild.textContent ?? "").trim();
+        if (scatterOnly) {
+          p.dataset.kineticReady = "true";
+          return;
+        }
+
+        // Pure single-slash paragraphs (e.g. "Snip.") rise gently as a unit (one-shot)
+        const slashOnly =
+          p.children.length === 1 &&
+          p.firstElementChild?.classList.contains("fx-slash") &&
+          (p.textContent ?? "").trim() === (p.firstElementChild.textContent ?? "").trim();
+        if (slashOnly) {
+          p.dataset.kineticReady = "true";
+          gsap.fromTo(
+            p,
+            { y: 18, opacity: 0.16 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.68,
+              ease: "power2.out",
+              clearProps: "transform",
+              scrollTrigger: {
+                trigger: p,
+                start: "top 91%",
+                once: true,
+              },
+            }
+          );
+          return;
+        }
+
+        p.dataset.kineticReady = "true";
+        splitTextIntoWords(p, "fx-lword");
+
+        // Exclude .fx-scatter so its character-scatter timeline never collides with line y
+        const tokens = Array.from(
+          p.querySelectorAll<HTMLElement>(
+            ".fx-lword, .fx-cleave, .fx-slash, .fx-impact, .fx-ghost"
+          )
+        ).filter((tok) => !tok.parentElement?.closest(".fx-cleave, .fx-slash, .fx-impact, .fx-ghost"));
+
+        if (!tokens.length) return;
+
+        // Single batch layout read to group tokens into visual line buckets
+        const lines: HTMLElement[][] = [];
+        let lastTop: number | null = null;
+        for (const tok of tokens) {
+          const top = tok.offsetTop;
+          if (lastTop === null || Math.abs(top - lastTop) > 6) {
+            lines.push([tok]);
+            lastTop = top;
+          } else {
+            lines[lines.length - 1].push(tok);
+          }
+        }
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: p,
+            start: "top 91%",
+            once: true,
+          },
+        });
+
+        lines.forEach((lineTokens, lineIdx) => {
+          tl.fromTo(
+            lineTokens,
+            { y: 18, opacity: 0.16 },
+            { y: 0, opacity: 1, duration: 0.68, ease: "power2.out", clearProps: "transform" },
+            lineIdx * 0.055
+          );
+        });
+      });
+
+      ScrollTrigger.refresh();
+      refreshMaxScroll();
+    }
+
+    if (!reducedMotion && !isQuiet) {
+      initMotion();
+    }
+
+    onQuietDisable = () => {
+      if (!reducedMotion && !motionInitialized) {
+        initMotion();
+        ScrollTrigger.refresh();
+      }
+    };
+
+    // 6. Auto-Bookmark & Reading Progress Tracker (cached maxScroll avoids scroll-time reflow)
+    let saveTimeout = 0;
+    let lastPctInt = -1;
+
+    function updateBookmarkOnScroll() {
+      const scrollPercent = Math.min(1, Math.max(0, window.scrollY / cachedMaxScroll));
+      const pctInt = Math.round(scrollPercent * 100);
+
+      if (percentLabel && pctInt !== lastPctInt) {
+        lastPctInt = pctInt;
+        percentLabel.textContent = `${pctInt}%`;
+      }
+
+      if (saveTimeout) window.clearTimeout(saveTimeout);
+      saveTimeout = window.setTimeout(() => {
+        if (!slug) return;
+        try {
+          localStorage.setItem(
+            BOOKMARK_KEY,
+            JSON.stringify({
+              slug,
+              title,
+              chapter,
+              scrollPercent: Number(scrollPercent.toFixed(4)),
+              updatedAt: Date.now(),
+            })
+          );
+        } catch {}
+      }, 180);
+    }
+
+    let globalResizeTimer = 0;
+    window.addEventListener("load", refreshMaxScroll, { once: true });
+    window.addEventListener(
+      "resize",
+      () => {
+        refreshMaxScroll();
+        if (globalResizeTimer) window.clearTimeout(globalResizeTimer);
+        globalResizeTimer = window.setTimeout(() => {
+          ScrollTrigger.refresh();
+          refreshMaxScroll();
+        }, 240);
+      },
+      { passive: true }
+    );
+
+    window.addEventListener("scroll", updateBookmarkOnScroll, { passive: true });
+    updateBookmarkOnScroll();
+
+    // Optional: If navigated with ?resume=XX from /book, glide to saved position
+    const params = new URLSearchParams(window.location.search);
+    const resumePct = Number(params.get("resume"));
+    if (!Number.isNaN(resumePct) && resumePct > 2) {
+      window.addEventListener(
+        "load",
+        () => {
+          refreshMaxScroll();
+          const targetY = (resumePct / 100) * cachedMaxScroll;
+          window.scrollTo({ top: targetY, behavior: "smooth" });
+        },
+        { once: true }
+      );
+    }
+
+    // 7. Ambient Dust/Ash Canvas Layer (0.5x buffer + ~30fps throttle; respects reduced-motion & Quiet Mode)
+    const canvas = document.getElementById("book-dust-canvas") as HTMLCanvasElement | null;
+    if (canvas && !reducedMotion) {
+      const ctx = canvas.getContext("2d");
+      let width = (canvas.width = Math.max(1, Math.round(window.innerWidth * 0.5)));
+      let height = (canvas.height = Math.max(1, Math.round(window.innerHeight * 0.5)));
+
+      window.addEventListener(
+        "resize",
+        () => {
+          width = canvas.width = Math.max(1, Math.round(window.innerWidth * 0.5));
+          height = canvas.height = Math.max(1, Math.round(window.innerHeight * 0.5));
+        },
+        { passive: true }
+      );
+
+      const moteCount = 26;
+      const motes = Array.from({ length: moteCount }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 0.85 + 0.25,
+        vx: (Math.random() - 0.5) * 0.22,
+        speed: Math.random() * 0.24 + 0.06,
+        alpha: Math.random() * 0.34 + 0.08,
+        shimmer: Math.random() * Math.PI * 2,
+      }));
+
+      // Couple ambient drift gently to scroll velocity
+      let prevDustScrollY = window.scrollY;
+      let scrollVel = 0;
+      window.addEventListener(
+        "scroll",
+        () => {
+          const currY = window.scrollY;
+          scrollVel = Math.max(-14, Math.min(14, (currY - prevDustScrollY) * 0.08));
+          prevDustScrollY = currY;
+        },
+        { passive: true }
+      );
+
+      let lastDustFrame = 0;
+      function drawMotes(now = 0) {
+        requestAnimationFrame(drawMotes);
+        if (!ctx || document.hidden || document.body.dataset.quiet === "true") return;
+        if (now - lastDustFrame < 32) return;
+        lastDustFrame = now;
+
+        ctx.clearRect(0, 0, width, height);
+        scrollVel *= 0.86;
+
+        const theme = document.body.dataset.theme || "bone";
+        const isAsh = theme === "ash" || theme === "void";
+        const isDusk = theme === "dusk";
+
+        for (const m of motes) {
+          m.shimmer += 0.03;
+          m.x += m.vx + Math.sin(m.shimmer) * 0.06;
+          // Ash/void falls gently downward like embers; dusk lifts softly like song/dust
+          const dir = isAsh ? 1 : -1;
+          m.y += m.speed * dir - scrollVel * (0.14 + m.r * 0.14);
+
+          if (m.y < -8) m.y = height + 8;
+          if (m.y > height + 8) m.y = -8;
+          if (m.x < -8) m.x = width + 8;
+          if (m.x > width + 8) m.x = -8;
+
+          const rgb = isAsh
+            ? "236, 234, 228"
+            : isDusk
+              ? "142, 114, 52"
+              : "28, 25, 23";
+          const alpha = m.alpha * (0.85 + Math.sin(m.shimmer) * 0.15);
+
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+          ctx.fill();
+        }
+      }
+
+      requestAnimationFrame(drawMotes);
+    }
+  </script>
+</Layout>
